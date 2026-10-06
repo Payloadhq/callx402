@@ -1,0 +1,8 @@
+node_modules/
+sdk/python/build/
+sdk/python/dist/
+sdk/python/*.egg-info/
+sdk/python/callx402/vendor/
+__pycache__/
+*.pyc
+.DS_Store
