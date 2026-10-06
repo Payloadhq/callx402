@@ -1,1 +1,41 @@
-{"author":"Payload","bin":{"callx402":"./bin/callx402.js"},"dependencies":{},"description":"Universal action layer that calls the x402 infrastructure subsystems (Sentinel, Rescue, Doctor, Router, SpendGuard, Settlement Resolver, MCP fabric, RevRule) behind one CLI/SDK entry point. callx402 is the ACTION, not the product name.","engines":{"node":">=18"},"homepage":"https://github.com/Payloadhq/callx402","keywords":["x402","mcp","cli","agents","payments"],"license":"MIT","main":"./sdk/js/index.js","name":"callx402","repository":{"type":"git","url":"https://github.com/Payloadhq/callx402"},"scripts":{"smoke":"node bin/callx402.js status --json"},"version":"0.1.0"}
+{
+  "author": "Payload",
+  "bin": {
+    "callx402": "./bin/callx402.js"
+  },
+  "dependencies": {},
+  "description": "callx402 by Veyline \u2014 the universal action for x402 infrastructure: diagnose, rescue, route, resolve and execute. Veyline is production infrastructure for x402 + MCP, by Payload.",
+  "engines": {
+    "node": ">=18"
+  },
+  "homepage": "https://github.com/Payloadhq/callx402",
+  "keywords": [
+    "x402",
+    "mcp",
+    "x402-production",
+    "x402-monitoring",
+    "x402-routing",
+    "x402-settlement",
+    "x402-rescue",
+    "x402-observability",
+    "agent-commerce",
+    "machine-commerce",
+    "payment-infrastructure",
+    "exactly-once",
+    "spendguard",
+    "sentinel",
+    "model-context-protocol",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "main": "./sdk/js/index.js",
+  "name": "callx402",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Payloadhq/callx402"
+  },
+  "scripts": {
+    "smoke": "node bin/callx402.js status --json"
+  },
+  "version": "0.1.0"
+}
