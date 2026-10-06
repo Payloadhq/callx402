@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "callx402"
 version = "0.1.0"
-description = "callx402: the universal action layer for x402 infrastructure — diagnose, rescue, route, resolve, execute"
+description = "callx402 by Veyline \u2014 the universal action for x402 infrastructure: diagnose, rescue, route, resolve and execute. Veyline is production infrastructure for x402 + MCP, by Payload."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
-keywords = ["x402", "actions", "payments", "routing", "diagnostics", "settlement", "rescue"]
+keywords = ["x402", "mcp", "x402-production", "x402-monitoring", "x402-routing", "x402-settlement", "x402-rescue", "agent-commerce", "machine-commerce", "payment-infrastructure", "exactly-once", "model-context-protocol"]
 authors = [{ name = "Payload" }]
 
 [project.urls]
