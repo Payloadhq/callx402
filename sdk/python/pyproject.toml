@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "callx402"
+version = "0.1.0"
+description = "callx402: the universal action layer for x402 infrastructure — diagnose, rescue, route, resolve, execute"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["x402", "actions", "payments", "routing", "diagnostics", "settlement", "rescue"]
+authors = [{ name = "Payload" }]
+
+[project.urls]
+Homepage = "https://github.com/Payloadhq/callx402"
+Repository = "https://github.com/Payloadhq/callx402"
+
+[project.scripts]
+callx402 = "callx402.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["callx402*"]
+
+# The bundled node CLI + core (synced into callx402/vendor/ at build time by
+# setup.py) so the wheel/sdist is self-contained. Editable installs resolve
+# the source-tree siblings instead (see callx402/__init__.py).
+[tool.setuptools.package-data]
+callx402 = ["vendor/**/*"]

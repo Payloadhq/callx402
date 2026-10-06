@@ -1,0 +1,537 @@
+---
+openapi: 3.0.0
+info:
+  title: callx402
+  version: 0.1.0
+  description: |
+    callx402 is the universal ACTION layer for x402 infrastructure: one dispatch
+    surface that calls existing x402 subsystems (Sentinel, Rescue, Doctor,
+    Router, Valuator, SpendGuard, Settlement Resolver, Intent Engine,
+    Capability Graph, Economic Planner, MCP fabric, RevRule).
+    callx402 is NOT a product name. The flagship product keeps a separate,
+    forthcoming brand and is accessed through callx402.
+  contact:
+    name: Payload
+    url: https://github.com/Payloadhq/callx402
+servers:
+  - url: http://127.0.0.1:8787
+    description: Default local server. Override the port with CALLX402_PORT.
+security: []
+paths:
+  /health:
+    get:
+      summary: Health and subsystem status
+      description: |
+        Returns the server version plus per-subsystem reachability and enabled
+        state from core getStatus(). Subsystems report honestly: reachable,
+        enabled (feature flag), version where available, and prototype notes.
+        Disabled or unreachable subsystems are reported, never faked.
+      operationId: health
+      responses:
+        '200':
+          description: Status report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Status unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /openapi.json:
+    get:
+      summary: This OpenAPI document as JSON
+      description: |
+        The single source of truth is server/openapi.yaml. The server converts
+        it to JSON at startup with a small built-in YAML subset parser and
+        serves the result here.
+      operationId: openapiJson
+      responses:
+        '200':
+          description: OpenAPI document
+          content:
+            application/json:
+              schema:
+                type: object
+  /openapi.yaml:
+    get:
+      summary: This OpenAPI document as YAML
+      description: Serves the raw server/openapi.yaml source text.
+      operationId: openapiYaml
+      responses:
+        '200':
+          description: OpenAPI document in YAML
+          content:
+            text/yaml:
+              schema:
+                type: string
+  /call:
+    post:
+      summary: Run a natural-language intent
+      description: |
+        Dispatches a natural-language intent through the intent pipeline
+        (Intent Engine, Capability Graph, Economic Planner, SpendGuard,
+        Router, execution, Effect Proof, settlement, RevRule event).
+        Over-budget intents are refused with zero execution side effects.
+        A repeated idempotencyKey returns the original stored result with
+        deduped=true instead of re-executing.
+      operationId: call
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntentRequest'
+      responses:
+        '200':
+          description: Result envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          description: Malformed JSON or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '403':
+          description: Budget refused by SpendGuard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '409':
+          description: Settlement UNKNOWN or unsafe retry refused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '503':
+          description: Required subsystem disabled or unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '504':
+          description: Request exceeded timeoutMs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+  /rescue:
+    post:
+      summary: Rescue a transaction
+      description: |
+        Dispatches to the Rescue subsystem for incident handling.
+        Requires incidentId. Auth-gated when CALLX402_AUTH_TOKEN is set.
+      operationId: rescue
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescueRequest'
+      responses:
+        '200':
+          description: Result envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          description: Malformed JSON or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '503':
+          description: Rescue subsystem disabled or unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '504':
+          description: Request exceeded timeoutMs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+  /route:
+    post:
+      summary: Route a paid agent job
+      description: |
+        Dispatches to the Router subsystem to select the cheapest viable
+        tool or path for a goal under the given constraints.
+      operationId: route
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRequest'
+      responses:
+        '200':
+          description: Result envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          description: Malformed JSON or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '503':
+          description: Router subsystem disabled or unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '504':
+          description: Request exceeded timeoutMs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+  /resolve:
+    post:
+      summary: Resolve settlement state
+      description: |
+        Dispatches evidence to the Settlement Resolver. Returns the
+        settlement state (DEFINITELY_PAID, DEFINITELY_NOT_PAID,
+        AUTHORIZED_NOT_SETTLED, SETTLEMENT_PENDING, CONFLICT, or UNKNOWN).
+        UNKNOWN is never auto-retried or repaid; it is surfaced for manual
+        resolution.
+      operationId: resolve
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveRequest'
+      responses:
+        '200':
+          description: Result envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          description: Malformed JSON or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '409':
+          description: Settlement UNKNOWN; surfaced for manual resolution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '503':
+          description: Settlement Resolver disabled or unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '504':
+          description: Request exceeded timeoutMs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+  /diagnose:
+    post:
+      summary: Diagnose an x402 / MCP failure
+      description: |
+        Dispatches to the Doctor subsystem to classify an x402 or MCP
+        failure from a target and/or evidence.
+      operationId: diagnose
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnoseRequest'
+      responses:
+        '200':
+          description: Result envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          description: Malformed JSON or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '503':
+          description: Doctor subsystem disabled or unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '504':
+          description: Request exceeded timeoutMs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Required on all POST routes only when the server was started with
+        CALLX402_AUTH_TOKEN set. Send as: Authorization: Bearer <token>.
+        When the token is not set, POST routes are open; production
+        deployments should set it.
+  schemas:
+    Envelope:
+      type: object
+      description: |
+        The universal callx402 result envelope. Returned by every action
+        (CLI --json, SDKs, HTTP). error is null on success; ok is false
+        whenever error is set.
+      required:
+        - ok
+        - action
+      properties:
+        ok:
+          type: boolean
+        action:
+          type: string
+          nullable: true
+        disposition:
+          type: string
+          nullable: true
+          description: Human-readable outcome.
+        subsystem:
+          type: string
+          nullable: true
+        subsystemStatus:
+          $ref: '#/components/schemas/SubsystemStatus'
+        data:
+          type: object
+          nullable: true
+          additionalProperties: true
+        settlement:
+          $ref: '#/components/schemas/SettlementState'
+        txHash:
+          type: string
+          nullable: true
+        receipt:
+          type: object
+          nullable: true
+          additionalProperties: true
+        idempotencyKey:
+          type: string
+          nullable: true
+        deduped:
+          type: boolean
+          description: True when a repeated idempotencyKey returned the stored original result.
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+    ErrorObject:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code, e.g. unauthorized, bad_request, validation_error, budget_refused, settlement_unknown, subsystem_disabled, subsystem_unreachable, timeout.
+        message:
+          type: string
+    SubsystemStatus:
+      type: string
+      nullable: true
+      enum:
+        - ok
+        - disabled
+        - unreachable
+        - prototype
+    SettlementState:
+      type: string
+      nullable: true
+      description: Settlement state from the Settlement Resolver. UNKNOWN is never auto-retried or repaid.
+      enum:
+        - DEFINITELY_PAID
+        - DEFINITELY_NOT_PAID
+        - AUTHORIZED_NOT_SETTLED
+        - SETTLEMENT_PENDING
+        - CONFLICT
+        - UNKNOWN
+    HealthResponse:
+      type: object
+      required:
+        - ok
+        - version
+      properties:
+        ok:
+          type: boolean
+        version:
+          type: string
+        subsystems:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Per-subsystem status from core getStatus(): reachable, enabled, version, note."
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+    IntentRequest:
+      type: object
+      required:
+        - intent
+      properties:
+        intent:
+          type: string
+          description: Natural-language intent, e.g. "complete this job for under $1".
+        maxBudget:
+          type: number
+          description: Maximum spend in USD. Over-budget intents are refused with zero side effects.
+        deadline:
+          type: string
+          description: ISO-8601 deadline.
+        speed:
+          type: string
+          enum:
+            - fast
+            - balanced
+            - cheap
+        risk:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+        networks:
+          type: array
+          items:
+            type: string
+        assets:
+          type: array
+          items:
+            type: string
+        providers:
+          type: array
+          items:
+            type: string
+        approvalThreshold:
+          type: number
+          description: Spend above this USD amount requires explicit approval; otherwise the request fails closed.
+        idempotencyKey:
+          type: string
+          description: Repeating a key returns the original stored result with deduped=true.
+        dryRun:
+          type: boolean
+          description: Plan and validate without executing.
+        timeoutMs:
+          type: integer
+          description: Per-request timeout in milliseconds. Default 30000. Exceeding it returns HTTP 504.
+      additionalProperties: true
+    RescueRequest:
+      type: object
+      required:
+        - incidentId
+      properties:
+        incidentId:
+          type: string
+        dryRun:
+          type: boolean
+        timeoutMs:
+          type: integer
+      additionalProperties: true
+    RouteRequest:
+      type: object
+      required:
+        - goal
+      properties:
+        goal:
+          type: string
+        policy:
+          type: string
+        maxBudget:
+          type: number
+        speed:
+          type: string
+          enum:
+            - fast
+            - balanced
+            - cheap
+        dryRun:
+          type: boolean
+        timeoutMs:
+          type: integer
+      additionalProperties: true
+    ResolveRequest:
+      type: object
+      required:
+        - evidence
+      properties:
+        evidence:
+          type: object
+          additionalProperties: true
+          description: Settlement evidence (receipts, tx hashes, facilitator responses).
+        timeoutMs:
+          type: integer
+      additionalProperties: true
+    DiagnoseRequest:
+      type: object
+      properties:
+        target:
+          type: string
+          description: What to diagnose (endpoint, tool, transaction id).
+        evidence:
+          type: object
+          additionalProperties: true
+          description: Failure evidence (errors, logs, responses).
+        timeoutMs:
+          type: integer
+      additionalProperties: true
