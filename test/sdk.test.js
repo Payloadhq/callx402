@@ -47,8 +47,8 @@ test('JS SDK: callx402({intent}) returns a full envelope (in-process)', async (t
 
 test('JS SDK: version, status(), and sub-actions', async (t) => {
   await withEnv(hermetic, async () => {
-    t.assert.strictEqual(sdk.version, '0.1.0');
-    t.assert.strictEqual(require('../sdk/js/index.js').callx402.version, '0.1.0');
+    t.assert.strictEqual(sdk.version, '1.0.0');
+    t.assert.strictEqual(require('../sdk/js/index.js').callx402.version, '1.0.0');
 
     const st = await sdk.status();
     t.assert.strictEqual(st.action, 'status');
