@@ -82,7 +82,7 @@ test('remote positive: CLI status + execute round-trip through a real server', a
     t.assert.strictEqual(st.code, 0);
     assertEnvelope(t, st.json, 'status');
     t.assert.strictEqual(st.json.ok, true);
-    t.assert.strictEqual(st.json.data.version, '0.1.0');
+    t.assert.strictEqual(st.json.data.version, '1.0.0');
     t.assert.strictEqual(Object.keys(st.json.data.subsystems).length, 15);
 
     const ex = await runCLI(
