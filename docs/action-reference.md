@@ -53,7 +53,7 @@ Shared notes for all actions:
 - **CAN IT CREATE OR RETRY AN AUTHORIZATION?** No.
 - **FAIL-CLOSED CONDITIONS:** No authorization supplied → `auth_required`, exit 3 ("Detection/quote tiers are free and read-only; execution never happens without auth."); rescue subsystem disabled or unreachable → exit 3.
 - **EXAMPLE:** `callx402 rescue --incident inc_123 --auth --json` (auth may also come from config or env; without it the command refuses with exit 3).
-- **CURRENT LIMITATIONS:** Triage and quotes only. Performing an actual paid rescue requires a separate, explicit paid engagement outside callx402.
+- **CURRENT LIMITATIONS:** Triage and quotes only. Performing an actual paid rescue is a paid on-demand callx402 action (per-action fee; see https://payloadhq.github.io/agents.json) — this local command performs triage only and never executes it.
 - **VERIFICATION STATUS:** Tested. `test/cli-dispatch.test.js`: "rescue: enabled but no auth -> auth_required, exit 3, nothing executed", "rescue: with --auth -> real rescue triage, read-only, exit 0", "rescue dispatch calls the real rescue module surface; no token -> auth_required exit 3".
 
 ## route
