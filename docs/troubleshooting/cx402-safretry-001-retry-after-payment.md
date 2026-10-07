@@ -83,9 +83,24 @@ confirmed transfer for the same intent, the retry logic is unsafe — fix it
 before it runs in production again. Log every retry decision with the evidence
 that justified it; "we retried because the timeout expired" is not evidence.
 
-## AUTOMATED
+## Using Callx402 for this condition
 
-The evidence-first decision tree above is what callx402's `explain` and
-`recover` actions encode: `callx402 explain op_abc123` classifies the state,
-and `callx402 recover` gives a read-only safe-retry verdict. Nothing charged,
-nothing executed, either way.
+The evidence-first decision tree above is what the `recover` action implements. It never initiates anything; it only evaluates:
+
+```
+callx402 recover <operationId> --identity <id>
+```
+
+It accepts an operation id, plus an operation identity: `--identity` directly, or `--evidence` JSON carrying the tool name, payer, and payment-authorization fingerprint (it builds the identity from those fields when `--identity` is absent). It evaluates the recorded history against that identity and returns a recovery state — RECOVERABLE, SAFE_RETRY, or anything else, which defaults to HUMAN_REVIEW.
+
+It returns the decision with its reasoning and a terminal assessment, ending with the explicit line "Read-only: nothing charged, nothing executed."
+
+What it deliberately refuses to do: it never charges, never executes, and never retries on your behalf. When the settlement state behind the operation is UNKNOWN, the recovery path refuses outright — an explicit retry after an unknown settlement could double-spend, so the pipeline demands manual settlement resolution first (the `resolve` action in the companion settlement article) and offers no bypass.
+
+Tested: yes. The veyline command suite covers RECOVERABLE and SAFE_RETRY decisions, the identity-from-evidence fallback, the unknown-identity refusal path, and the disabled-subsystem refusal (exit 3).
+
+Limitation: it reasons from recorded evidence only. If the operation was never recorded in the ledger, there is no basis for a verdict, and it says so instead of inventing one.
+
+## SOURCES / VERIFICATION SCOPE
+
+Protocol claims cite the x402 issue tracker links in the frontmatter, independently of callx402. Callx402 claims above were checked against the source tree (`core/veyline.js`, `bin/callx402.js`) and the veyline command test suite (`test/veyline-commands.test.js`) as of 2026-10-06. The tool was not exercised live against a mainnet facilitator for this article.
