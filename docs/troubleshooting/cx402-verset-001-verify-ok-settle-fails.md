@@ -78,8 +78,24 @@ is performed before settlement is confirmed — test with an authorization that
 you deliberately invalidate between verify and settle, and confirm your system
 refuses to serve.
 
-## AUTOMATED
+## Using Callx402 for this condition
 
-callx402's `diagnose` runs the failure classifiers over both responses so you
-don't diff them by hand: `callx402 diagnose --evidence
-'{"verifyResponse":{...},"settleResponse":{...}}'`.
+The verify-then-settle diff described in the SAFE FIX section is what the `diagnose` action performs over supplied evidence:
+
+```
+callx402 diagnose --evidence '{"verifyResponse":{...},"settleResponse":{...}}'
+```
+
+It accepts a JSON evidence bundle (or `@file`, or `--target`): here, both the `/verify` and `/settle` responses, with timestamps if you have them. It evaluates the bundle through the x402 doctor, which runs its failure classifiers deterministically over what you supplied and reports what failed and why — a payload mismatch the verify step does not check, a settle-time rule violation, or a state change between the two calls.
+
+It returns the doctor's report: what failed, per-stage findings, and an explanation. Exit 0 on a completed diagnosis.
+
+What it deliberately refuses to do: it takes no action on the facilitator — no re-verification, no resubmission, no retry of anything. Malformed evidence is rejected as a usage error rather than diagnosed, and a disabled subsystem produces an honest unavailable envelope instead of a guess.
+
+Tested: yes. Dispatch tests cover the enabled path (real doctor report with per-stage findings), the disabled-subsystem refusal, and the `doctor` alias.
+
+Limitation: classification is only as good as what you hand it. It does not call the facilitator, does not check the chain, and cannot discover a settle-time rule that is not visible in the responses you supplied.
+
+## SOURCES / VERIFICATION SCOPE
+
+Protocol claims cite the x402 issue tracker and the dev.to case study in the frontmatter, independently of callx402. Callx402 claims above were checked against the source tree (`core/index.js`, `bin/callx402.js`) and the dispatch test suite (`test/cli-dispatch.test.js`) as of 2026-10-06. The tool was not exercised live against a mainnet facilitator for this article.
