@@ -10,8 +10,9 @@ routes it to the production system that does the real work.
 
 - **PAYLOAD** = the parent company.
 - **VEYLINE** = production infrastructure for x402 + MCP. The flagship brand.
-- **CALLX402** = the x402 response/action layer. The entry action, not a separate
-  product name. Nothing here renames Veyline.
+- **CALLX402 BY PAYLOAD** = the x402 response/action layer, powered by Veyline.
+  The entry action into Veyline's production infrastructure, not the flagship
+  name. Nothing here renames Veyline.
 
 Discovery path: a developer searching for x402 finds callx402, uses it, and
 learns Veyline. Payload is not affiliated with the x402 Foundation.
