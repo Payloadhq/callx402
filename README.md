@@ -125,6 +125,27 @@ Full HTTP surface: `server/openapi.yaml` (served live at `GET /openapi.json`).
 | `callx402 inspect [--query <text>]` | Inspect capability graph / state |
 | `callx402 config list \| get <k> \| set <k> <v>` | Manage local config |
 
+## Integrations
+
+Working entry points for agent frameworks, automation, MCP clients, and x402
+facilitators — all in [`integrations/`](integrations/) and tested against the
+live rail:
+
+- **LangChain** — 9 tools (`integrations/langchain/`): diagnose, recover,
+  resolve, evidence, explain, safe-retry, duplicate-payment risk, preflight,
+  plus the free live fee schedule
+- **CrewAI** — the same actions as CrewAI Tools (`integrations/crewai/`)
+- **n8n** — importable incident-guard workflow (`integrations/n8n/`): maps an
+  incident to a callx402 action, fetches the free live quote, invokes when
+  credentialed, otherwise emits payment instructions — never auto-pays
+- **MCP clients** — Claude Desktop / Cursor / Windsurf setup for the free
+  read-only MCP server (`integrations/mcp-clients/`)
+- **x402 facilitators** — `settle-guard.js` (`integrations/facilitator/`):
+  resolve settlement state from evidence *before* re-broadcasting a payment
+
+Problem → action map: [`docs/problem-map.md`](docs/problem-map.md).
+Machine front door for agents: https://payloadhq.github.io/agents.json.
+
 ## Money-safety rules
 
 - **Settlement UNKNOWN is never auto-retried and never repaid.**
