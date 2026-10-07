@@ -1,0 +1,4 @@
+FAILED [resolve] via settlement
+Settlement UNKNOWN: no auto-retry, no repay. Resolve manually with fresh evidence; an operator override requires callx402-level explicit action outside this dispatch.
+settlement: UNKNOWN
+error [settlement_unknown]: Settlement state is UNKNOWN. Per money-safety rules this must never auto-retry or repay.
