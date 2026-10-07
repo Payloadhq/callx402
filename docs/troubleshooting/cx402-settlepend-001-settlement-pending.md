@@ -69,7 +69,24 @@ correct amount — or a replacement authorization was signed only after the
 original was proven dead, and the replacement confirmed. Check your ledger:
 one intent, one transfer. If you see two, the retry was unsafe.
 
-## AUTOMATED
+## Using Callx402 for this condition
 
-Everything above is manual. callx402's `resolve` action runs the same steps
-from evidence: `callx402 resolve --evidence '{"txHash":"0x...","network":"base"}'`.
+The `resolve` action runs the same reconciliation logic from one place. Feed it the evidence bundle you gathered above:
+
+```
+callx402 resolve --evidence '{"txHash":"0x...","network":"base","chainState":"pending"}'
+```
+
+It accepts a JSON string (or `@file`) describing what you know: typically the broadcast transaction hash, the network, the on-chain state you observed, and any facilitator responses. It evaluates the bundle through the settlement resolver, which deterministically maps it to one of six certainty states — DEFINITELY_PAID, DEFINITELY_NOT_PAID, AUTHORIZED_NOT_SETTLED, SETTLEMENT_PENDING, CONFLICT, UNKNOWN — and attaches a retry policy, a confidence level, and the basis for the verdict.
+
+It returns a disposition statement, the settlement state, the transaction hash, and the full resolution record. When the evidence is too thin to decide, the state is UNKNOWN and the command exits 5 rather than guessing.
+
+What it deliberately refuses to do: the resolver is read-only analysis. It never queries the chain itself, never signs, never retries, and never repays. An UNKNOWN state stays UNKNOWN unless an operator records an explicit, auditable override — it will not silently become a repay.
+
+Tested: yes. Dispatch tests cover the UNKNOWN path (exit 5) and the disabled-subsystem refusal (exit 3).
+
+Limitation: the verdict is only as good as the evidence you supply. It organizes what you found; it does not do the chain lookup for you, and it cannot improve on a hash you never reconciled.
+
+## SOURCES / VERIFICATION SCOPE
+
+Protocol claims cite the x402 v2 spec and the issue tracker links in the frontmatter, independently of callx402. Callx402 claims above were checked against the source tree (`core/index.js`, `core/subsystems.js`, `bin/callx402.js`, the settlement resolver) and the dispatch test suite (`test/cli-dispatch.test.js`) as of 2026-10-06. The tool was not exercised live against a mainnet facilitator for this article.
