@@ -65,7 +65,7 @@ test('GET /health -> 200 with version and subsystem map', async (t) => {
     const r = await request(port, 'GET', '/health');
     t.assert.strictEqual(r.status, 200);
     t.assert.strictEqual(r.json.ok, true);
-    t.assert.strictEqual(r.json.version, '0.1.0');
+    t.assert.strictEqual(r.json.version, '1.0.0');
     t.assert.strictEqual(Object.keys(r.json.subsystems).length, 15);
     t.assert.strictEqual(r.json.subsystems.doctor.flag, 'PAYLOAD_MCP_DOCTOR');
   } finally {
