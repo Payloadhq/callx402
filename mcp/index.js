@@ -24,7 +24,7 @@
  */
 const readline = require('node:readline');
 
-const VERSION = '0.1.0';
+const VERSION = '1.0.0';
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'callx402';
 const TIMEOUT_MS = Number(process.env.CALLX402_TIMEOUT_MS || 30000);
