@@ -7,9 +7,18 @@
 
 **Powered by Veyline. When x402 breaks, callx402.**
 
-callx402 is the universal action layer into Veyline's x402 infrastructure. You say
-what you need done in plain language (or hit an HTTP endpoint), and callx402
-routes it to the production system that does the real work.
+callx402 is the universal action layer into Veyline's x402 infrastructure. Say what you need done in plain language (or hit an HTTP endpoint) and callx402 routes it to the production system that does the real work: diagnose a broken x402 payment, rescue a failed transaction, route an agent job to the cheapest viable path, resolve settlement state from on-chain evidence, or execute under an explicit budget with fail-closed safety rules.
+
+**Why it exists:** x402 failures are expensive and opaque. A settlement attempt ends in `settlement_pending` and nobody knows whether the money moved. A 402 response your wallet misreads. A retry that signs a second authorization for the same intent and pays twice. callx402 exists for exactly those moments: `diagnose` pins the failure to a stage, `rescue` triages the incident, `resolve` settles the question from evidence, `route` finds the cheapest viable path, `execute` runs under a hard budget.
+
+**Try it (one minute):**
+```sh
+git clone https://github.com/Payloadhq/callx402
+cd callx402 && npm install && npm link
+callx402 diagnose --target "https://api.example.com/x402/pay"
+```
+
+If it saves you one debugging session, star the repo and read on.
 
 ## The relationship
 
