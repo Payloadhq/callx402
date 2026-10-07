@@ -106,13 +106,38 @@ second signature, and the broadcast hash reconciles to exactly one on-chain
 transfer. Then simulate a provably failed settle and confirm a new
 authorization is permitted exactly once.
 
-## AUTOMATED
+## Using Callx402 for this condition
 
-callx402's `resolve` treats an ambiguous settle as reconcile-first. Tested
-against the current implementation: on ambiguous evidence it returns
-`UNKNOWN` with a fail-closed policy (no auto-retry, ever), retains the
-original payment identity, and its code path has no signing or broadcast
-capability — no second authorization can be generated through it. [tested]
-Live on-chain reconciliation inside `resolve` was not exercised here; the
-resolver analyzes supplied evidence, including chain state you provide.
-[unproven]
+For an ambiguous settle, the relevant action is `resolve`. It accepts
+settlement evidence as JSON (`callx402 resolve --evidence '<json>'` or
+`--evidence @file`): the broadcast transaction hash, the network, the
+facilitator's settle and verify responses, and any chain state you have
+already looked up. From that evidence it determines which of six
+settlement states the operation is in; on anything it cannot decide it
+returns UNKNOWN and holds fail-closed — no retry is scheduled, no payment
+is repaid, and the process exits non-zero so automation cannot blunder
+past it. [tested] The code path has no signing and no broadcast
+capability, so there is no route through it to a second authorization;
+it works from the original payment identity you supplied. [tested]
+
+Live on-chain reconciliation inside `resolve` was not exercised here: the
+resolver reasons over the evidence you hand it — chain state included —
+rather than querying the chain itself, and it does not poll a pending
+transaction on your behalf. [unproven] The resolver module is also
+env-gated (it needs to be enabled before you script against it) and
+returns an unreachable result rather than guessing when it is off.
+
+## SOURCES AND VERIFICATION SCOPE
+
+- Protocol claims (three settlement layers, `settlement_pending` semantics,
+  402 as ordinary signaling) verified against the x402 specification v2 and
+  the reference TypeScript facilitator's pending-settlement store and
+  settle receipt handling, current as of 2026-10-06.
+- The third-party SDK safety decision is cited from the UVD Python SDK
+  commit linked in the front matter, not from the protocol.
+- callx402 claims cite the current implementation: `resolve` fail-closed
+  behavior and no-signing code path verified against the test suite
+  (`test/safety.test.js`, `test/cli-dispatch.test.js`), which runs with
+  the resolver module enabled; live chain reconciliation noted as
+  unexercised because the resolver is mocks/local-only in this build.
+- Problem and fix content verified independently of callx402.
