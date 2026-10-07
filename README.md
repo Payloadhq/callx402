@@ -49,7 +49,15 @@ Behavioral usage language (not trademark claims):
 
 ## Quickstart
 
-Install from GitHub (zero dependencies):
+**Current install route** (direct from GitHub; this path keeps working after the npm registry release):
+
+```sh
+npm install Payloadhq/callx402
+```
+
+Once the package is published, the canonical path will be `npm install callx402`.
+
+Alternative — clone and link for local development:
 
 ```sh
 git clone https://github.com/Payloadhq/callx402
