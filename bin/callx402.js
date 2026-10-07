@@ -21,7 +21,7 @@ const { loadConfig, getConfig, setConfig, listConfig } = require(path.join(ROOT,
 const { EXIT } = require(path.join(ROOT, 'core', 'envelope'));
 
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const VERSION = PKG.version || '0.1.0';
+const VERSION = PKG.version || '1.0.0';
 
 const COMMANDS = ['diagnose', 'rescue', 'route', 'resolve', 'doctor', 'execute', 'monitor', 'status', 'preflight', 'inspect', 'config'];
 
