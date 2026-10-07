@@ -18,14 +18,18 @@ VENDOR = os.path.join(ROOT, "callx402", "vendor")
 
 
 def sync_vendor():
+    # When building from an extracted sdist or an isolated env where the
+    # sibling bin/ and core/ trees are not present, keep the already-vendored
+    # copy (shipped inside the sdist) instead of wiping it.
+    sources = {name: os.path.join(PROJECT_ROOT, name) for name in ("bin", "core")}
+    if not any(os.path.isdir(src) for src in sources.values()):
+        return
     os.makedirs(VENDOR, exist_ok=True)
-    for name in ("bin", "core"):
-        src = os.path.join(PROJECT_ROOT, name)
+    for name, src in sources.items():
         dst = os.path.join(VENDOR, name)
         if os.path.isdir(dst):
             shutil.rmtree(dst)
-        if os.path.isdir(src):
-            shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
     # bin/callx402.js reads ../package.json for its version string.
     pkg_src = os.path.join(PROJECT_ROOT, "package.json")
     if os.path.isfile(pkg_src):
