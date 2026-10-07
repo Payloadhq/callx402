@@ -2,6 +2,7 @@
 > PAYLOAD → VEYLINE (flagship) → CALLX402 (action layer) → REVRULE (separate) → developer products → free utilities.
 > This repo: **callx402 by Payload — the universal action layer into Veyline's x402 infrastructure.**
 
+<p align="center"><img src="docs/logo.png" alt="callx402 logo" width="200"></p>
 # callx402 by Payload
 
 **Powered by Veyline. When x402 breaks, callx402.**
