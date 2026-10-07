@@ -1,0 +1,39 @@
+callx402 0.1.0 — universal action layer for x402 infrastructure.
+callx402 is the ACTION, not the product name; every command dispatches into
+the existing v2.0.0 subsystems. Nothing here executes payments by itself.
+
+Usage:
+  callx402 <command> [args] [options]
+  callx402 "natural language intent"        intent mode (plans, never executes blindly)
+  callx402 --help | --version
+
+Commands:
+  diagnose    run the x402 doctor over supplied evidence        [--target ...]
+  rescue      incident triage (auth-gated; read-only without auth) --incident <id>
+  route       select a tool/route for a goal                   --goal <text>
+  resolve     resolve settlement state from evidence           --evidence <json|@file>
+  doctor      alias of diagnose
+  execute     run the intent pipeline                          --intent <text> [--max-budget N] [--dry-run] [--idempotency-key K]
+  monitor     sentinel snapshot [--once] or stream [--watch]
+  status      per-subsystem reachable/enabled/version report
+  preflight   run MCP preflight checks
+  inspect     capability-graph lookup/stats                    [--query <text>]
+  evidence    show recorded evidence for an operation          <operationId> [--dir <path>]
+  explain     explain an operation's state in plain language   <operationId> [--dir <path>]
+  recover     report the safe recovery decision (read-only)    <operationId> [--identity <id> | --evidence <json>]
+  config      list | get <key> | set <key> <value>
+
+Options:
+  --json                 print the full result envelope as JSON
+  --timeout <ms>         fail the action if it exceeds <ms>
+  --approve              authorize costs above the approval threshold
+  --force-retry          explicit retry flag (REFUSED when prior settlement is UNKNOWN)
+  --dry-run              plan only; no execution side effects
+  --speed fast|balanced|cheap   routing policy hint
+  --max-budget <usd>     cap for execute
+  --idempotency-key <k>  dedupe key for execute
+  -h, --help             this help
+  -v, --version          version
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
