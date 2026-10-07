@@ -5,6 +5,10 @@
 <p align="center"><img src="docs/logo.png" alt="callx402 logo" width="200"></p>
 # callx402 by Payload
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Node >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](package.json)
+[![MCP stdio](https://img.shields.io/badge/MCP-stdio-blue.svg)](mcp/README.md)
+
 **Powered by Veyline. When x402 breaks, callx402.**
 
 callx402 is the universal action layer into Veyline's x402 infrastructure. Say what you need done in plain language (or hit an HTTP endpoint) and callx402 routes it to the production system that does the real work: diagnose a broken x402 payment, rescue a failed transaction, route an agent job to the cheapest viable path, resolve settlement state from on-chain evidence, or execute under an explicit budget with fail-closed safety rules.
@@ -19,6 +23,41 @@ callx402 diagnose --target "https://api.example.com/x402/pay"
 ```
 
 If it saves you one debugging session, star the repo and read on.
+
+## MCP server: connect in 60 seconds
+
+This repo ships a zero-dependency, read-only MCP server (`mcp/index.js`, node
+stdlib only, stdio transport) exposing six `x402_*` diagnostic tools. Nothing
+here charges, executes, retries, or repays.
+
+```sh
+git clone https://github.com/Payloadhq/callx402
+# no npm install needed for the MCP server
+```
+
+Add this block to your MCP client config (replace the path), then restart the
+client:
+
+| Client | Config file |
+|---|---|
+| Claude Desktop | `claude_desktop_config.json` (`~/Library/Application Support/Claude/` on macOS, `%APPDATA%\Claude\` on Windows) |
+| Cursor | `~/.cursor/mcp.json` (user scope) or `.cursor/mcp.json` (project scope) |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+
+```json
+{
+  "mcpServers": {
+    "callx402": {
+      "command": "node",
+      "args": ["/absolute/path/to/callx402/mcp/index.js"]
+    }
+  }
+}
+```
+
+Ask the client to list its MCP tools: the six `x402_*` tools should appear.
+Per-client notes and the raw stdio test handshake:
+[`integrations/mcp-clients/`](integrations/mcp-clients/).
 
 ## The relationship
 
