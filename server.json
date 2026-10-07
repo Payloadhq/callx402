@@ -1,1 +1,23 @@
-{"$schema":"https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json","description":"Production-safe, read-only MCP tools for x402 payment diagnostics: diagnose, evidence, explain, recover, resolve, status. stdio transport, zero dependencies (node stdlib only). Nothing charges, executes, retries, or repays. Part of the Payload ecosystem; machine front door at https://payloadhq.github.io/agents.json.","license":"MIT","name":"io.github.payloadhq/callx402","packages":[{"identifier":"callx402","registryType":"npm","transport":{"type":"stdio"},"version":"1.0.0"}],"repository":{"source":"github","url":"https://github.com/Payloadhq/callx402"},"title":"callx402 MCP server","version":"1.0.0","websiteUrl":"https://github.com/Payloadhq/callx402"}
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "description": "Read-only x402 payment diagnostics: diagnose, evidence, explain, recover, resolve, status. Zero deps",
+  "license": "MIT",
+  "name": "io.github.payloadhq/callx402",
+  "packages": [
+    {
+      "identifier": "callx402",
+      "registryType": "npm",
+      "transport": {
+        "type": "stdio"
+      },
+      "version": "1.0.0"
+    }
+  ],
+  "repository": {
+    "source": "github",
+    "url": "https://github.com/Payloadhq/callx402"
+  },
+  "title": "callx402 MCP server",
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/Payloadhq/callx402"
+}
