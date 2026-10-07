@@ -74,9 +74,24 @@ Resolved when you can answer all three planes from evidence: payment settled
 operator or logs), delivery confirmed (result in hand). If any plane is still
 UNKNOWN, the incident is open — do not close it by retrying.
 
-## AUTOMATED
+## Using Callx402 for this condition
 
-The three-plane check above is what callx402's `evidence`, `explain`, and
-`recover` actions do from recorded data: `callx402 evidence op_abc123` answers
-per plane, `explain` classifies, `recover` gives the read-only verdict on
-whether retry is safe.
+The three-plane check in the SAFE FIX section maps to a three-step sequence. Start with `evidence`:
+
+```
+callx402 evidence <operationId>
+```
+
+It accepts an operation id (and optionally `--dir` to point at a different ledger store). It evaluates the operation ledger's recorded events: the latest per-plane states (payment, execution, delivery), the protocols involved, and an event trail. It returns those states, the trail, and a plain statement of basis — including "no events recorded for this operation," stated plainly rather than hidden.
+
+The follow-on sequence: `explain <operationId>` classifies the recorded state — NO_BASIS, INCOMPLETE (any UNKNOWN plane means do not retry, do not repay), KNOWN_SAFE, RECOVERY_CANDIDATE, or PARTIAL — and a RECOVERY_CANDIDATE verdict points you to `recover <operationId>`, which returns the read-only safe-recovery verdict described in the companion retry article.
+
+What the sequence deliberately refuses to do: all three steps are read-only. None of them re-executes the tool, re-settles the payment, or triggers a retry. `recover` states its verdict and stops there.
+
+Tested: yes. The veyline command suite covers evidence reporting (including the honest no-basis case), explain assessments, and the read-only recover decisions.
+
+Limitation: everything here answers from the ledger's recorded events. If the operation was never recorded — or the execution record lives only with the resource operator — `evidence` reports no basis, and the remaining steps can only tell you what is missing, not fill it in.
+
+## SOURCES / VERIFICATION SCOPE
+
+Protocol claims cite the x402 v2 spec and the issue tracker link in the frontmatter, independently of callx402. Callx402 claims above were checked against the source tree (`core/veyline.js`, `bin/callx402.js`) and the veyline command test suite (`test/veyline-commands.test.js`) as of 2026-10-06. The tool was not exercised live against a mainnet facilitator for this article.
