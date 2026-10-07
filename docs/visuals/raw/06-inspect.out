@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "action": "inspect",
+  "disposition": "Capability graph stats.",
+  "subsystem": "capabilities",
+  "subsystemStatus": "ok",
+  "data": {
+    "query": "",
+    "stats": {
+      "nodes": 0,
+      "edges": 0,
+      "tools": 0,
+      "by_type": {}
+    },
+    "candidates": []
+  },
+  "settlement": null,
+  "txHash": null,
+  "receipt": {},
+  "idempotencyKey": null,
+  "deduped": false,
+  "error": null
+}
