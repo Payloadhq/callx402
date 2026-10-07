@@ -1,0 +1,16 @@
+callx402 status: 15/15 subsystems reachable, 0/15 enabled.
+  sentinel     disabled (PAYLOAD_SENTINEL)
+  rescue       disabled (PAYLOAD_RESCUE)  v1.0.0
+  doctor       disabled (PAYLOAD_MCP_DOCTOR)
+  router       disabled (PAYLOAD_MCP_ROUTES)
+  spendguard   disabled (PAYLOAD_MCP_SPENDGUARD)
+  settlement   disabled (PAYLOAD_SETTLEMENT_RESOLVER)
+  intent       disabled (PAYLOAD_MCP_FABRIC)
+  capabilities disabled (PAYLOAD_MCP_FABRIC)
+  planner      disabled (PAYLOAD_MCP_PLANNER)
+  fabric       disabled (no FLAG export)
+  revrule      disabled (PAYLOAD_REVRULE_EVENTS)
+  preflight    disabled (PAYLOAD_MCP_PREFLIGHT)
+  effectproof  disabled (PAYLOAD_MCP_EFFECT_PROOF)  v1
+  kernel       disabled (PAYLOAD_MCP_EXECUTION_KERNEL)
+  recovery     disabled (PAYLOAD_MCP_RESULT_RECOVERY)
