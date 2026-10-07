@@ -10,7 +10,7 @@
  * as { ok: false, error: {...} } envelopes — never swallowed, never retried.
  */
 
-const VERSION = '0.1.0';
+const VERSION = '1.0.0';
 
 const KNOWN_ACTIONS = [
   'diagnose', 'rescue', 'route', 'resolve', 'doctor',
