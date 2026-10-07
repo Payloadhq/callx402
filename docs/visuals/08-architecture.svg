@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" font-family="'DejaVu Sans Mono', monospace">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#8b949e"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="460" fill="#181a20"/>
+  <text x="40" y="44" fill="#6e7681" font-size="15">callx402 architecture: factual dispatch path (v0.1.0)</text>
+
+  <!-- Actor -->
+  <rect x="40" y="150" width="200" height="120" rx="8" fill="#23262e" stroke="#3a4048" stroke-width="1.5"/>
+  <text x="140" y="200" fill="#f0f3f6" font-size="18" text-anchor="middle">Developer</text>
+  <text x="140" y="226" fill="#f0f3f6" font-size="18" text-anchor="middle">/ Agent</text>
+
+  <!-- callx402 -->
+  <rect x="320" y="90" width="320" height="260" rx="8" fill="#23262e" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="480" y="128" fill="#f0f3f6" font-size="20" text-anchor="middle">callx402 0.1.0</text>
+  <text x="480" y="152" fill="#8b949e" font-size="13" text-anchor="middle">universal action layer</text>
+  <line x1="340" y1="166" x2="620" y2="166" stroke="#3a4048" stroke-width="1"/>
+  <text x="480" y="192" fill="#c9d1d9" font-size="14" text-anchor="middle">diagnose · route · resolve</text>
+  <text x="480" y="214" fill="#c9d1d9" font-size="14" text-anchor="middle">preflight · inspect · status</text>
+  <text x="480" y="236" fill="#c9d1d9" font-size="14" text-anchor="middle">execute · monitor · rescue</text>
+  <text x="480" y="258" fill="#c9d1d9" font-size="14" text-anchor="middle">evidence · explain · recover</text>
+  <text x="480" y="292" fill="#8b949e" font-size="13" text-anchor="middle">each action dispatches into</text>
+  <text x="480" y="312" fill="#8b949e" font-size="13" text-anchor="middle">the v2.0.0 subsystems</text>
+
+  <!-- Infra boxes -->
+  <rect x="720" y="90" width="400" height="74" rx="8" fill="#23262e" stroke="#3a4048" stroke-width="1.5"/>
+  <text x="920" y="120" fill="#f0f3f6" font-size="17" text-anchor="middle">Veyline</text>
+  <text x="920" y="142" fill="#8b949e" font-size="12" text-anchor="middle">production settlement / revenue layer</text>
+
+  <rect x="720" y="193" width="400" height="74" rx="8" fill="#23262e" stroke="#3a4048" stroke-width="1.5"/>
+  <text x="920" y="223" fill="#f0f3f6" font-size="17" text-anchor="middle">x402 protocol</text>
+  <text x="920" y="245" fill="#8b949e" font-size="12" text-anchor="middle">payment-required handshake / settlement</text>
+
+  <rect x="720" y="296" width="400" height="74" rx="8" fill="#23262e" stroke="#3a4048" stroke-width="1.5"/>
+  <text x="920" y="326" fill="#f0f3f6" font-size="17" text-anchor="middle">MCP infrastructure</text>
+  <text x="920" y="348" fill="#8b949e" font-size="12" text-anchor="middle">doctor · router · preflight · capability graph</text>
+
+  <!-- Arrows -->
+  <line x1="240" y1="210" x2="312" y2="210" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="276" y="196" fill="#8b949e" font-size="12" text-anchor="middle">issues action</text>
+
+  <line x1="640" y1="127" x2="712" y2="127" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="640" y1="230" x2="712" y2="230" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="640" y1="333" x2="712" y2="333" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="40" y="420" fill="#6e7681" font-size="13">Nothing here executes payments by itself. Subsystems are disabled by default (fail-closed); each is enabled by its own PAYLOAD_* flag.</text>
+</svg>
