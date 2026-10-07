@@ -32,7 +32,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const VERSION = '0.1.0';
+const VERSION = '1.0.0';
 const DEFAULT_PORT = 8787;
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_TIMEOUT_MS = 30000;
