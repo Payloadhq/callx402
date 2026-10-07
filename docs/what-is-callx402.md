@@ -1,6 +1,6 @@
 # What Callx402 Is, What It Can Do, and How to Use It
 
-**Version:** 0.1.0 · **Status:** staged for review, not published · **Verified against:** `cli-help-verified-2026-10-06.txt`, `SPEC.md`, `core/`, `server/index.js`, `sdk/`, and the test suite (2026-10-06).
+**Version:** 1.0.0 · **Status:** v1.0.0 released, installable from GitHub · **Verified against:** `cli-help-verified-2026-10-06.txt`, `SPEC.md`, `core/`, `server/index.js`, `sdk/`, and the test suite (2026-10-06).
 
 ## The one-paragraph definition
 
