@@ -1,3 +1,7 @@
+> **Payload** — Developer infrastructure for x402, agent payments, and programmable revenue.
+> PAYLOAD → VEYLINE (flagship) → CALLX402 (action layer) → REVRULE (separate) → developer products → free utilities.
+> This repo: **callx402 by Payload — the universal action layer into Veyline's x402 infrastructure.**
+
 # callx402 by Payload
 
 **Powered by Veyline. When x402 breaks, callx402.**
