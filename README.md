@@ -152,3 +152,9 @@ Design spec: `SPEC.md`.
 ## License
 
 MIT. See `LICENSE`.
+
+---
+
+**More from Payload** · [payloadhq.github.io](https://payloadhq.github.io/) · [all Payload repos](https://github.com/Payloadhq)
+
+Related: [x402-manifest-check](https://github.com/Payloadhq/x402-manifest-check) · [x402-observatory](https://github.com/Payloadhq/x402-observatory) · [flow-agentic-demo](https://github.com/Payloadhq/flow-agentic-demo)
