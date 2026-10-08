@@ -84,7 +84,9 @@ callx402 evidence <operationId>
 
 It accepts an operation id (and optionally `--dir` to point at a different ledger store). It evaluates the operation ledger's recorded events: the latest per-plane states (payment, execution, delivery), the protocols involved, and an event trail. It returns those states, the trail, and a plain statement of basis — including "no events recorded for this operation," stated plainly rather than hidden.
 
-The follow-on sequence: `explain <operationId>` classifies the recorded state — NO_BASIS, INCOMPLETE (any UNKNOWN plane means do not retry, do not repay), KNOWN_SAFE, RECOVERY_CANDIDATE, or PARTIAL — and a RECOVERY_CANDIDATE verdict points you to `recover <operationId>`, which returns the read-only safe-recovery verdict described in the companion retry article.
+The follow-on sequence: `explain <operationId>` classifies the recorded state — NO_BASIS, INCOMPLETE (any UNKNOWN plane means do not retry, do not repay), KNOWN_SAFE, RECOVERY_CANDIDATE, or PARTIAL — and a RECOVERY_CANDIDATE verdict points you to `recover <operationId>`, which returns the read-only safe-recovery verdict described in the companion retry article (`cx402-safretry-001-retry-after-payment.md`).
+
+When the free read-only verdict is not enough and you need the production rail to recover the incident, the paid one-off `recover` rail action follows the quote-then-pay shape: free quote at `GET /v1/callx402/quote?action=recover&path=x402` ($0.50 on the x402 path), then `POST /v1/callx402/actions/recover` returns HTTP 402 with the exact USDC terms — pay deliberately from an authorized wallet and retry with `{txHash, quote_id}`. See `docs/problem-map.md` for the full problem-to-action map.
 
 What the sequence deliberately refuses to do: all three steps are read-only. None of them re-executes the tool, re-settles the payment, or triggers a retry. `recover` states its verdict and stops there.
 
