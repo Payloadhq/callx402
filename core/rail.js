@@ -22,10 +22,9 @@ const { randomBytes } = require('node:crypto');
 const { buildAuthMessage, readSignedAuthorization } = require('./payer-auth.js');
 const RAIL_BASE = process.env.CALLX402_RAIL || 'https://payload-rail.fly.dev';
 const RAIL_ACTIONS = [
-  'diagnose', 'doctor', 'rescue', 'route', 'resolve', 'execute', 'monitor',
-  'preflight', 'inspect', 'evidence', 'explain', 'recover',
-  'settlement_interpretation', 'safe_retry', 'failure_classification',
-  'duplicate_payment_risk',
+  'diagnose', 'doctor', 'resolve', 'preflight',
+  'evidence', 'explain', 'recover',
+  'settlement_interpretation', 'failure_classification', 'duplicate_payment_risk',
 ];
 
 // Map CLI command names to rail action names.
@@ -154,6 +153,9 @@ async function invokeRail(command, args, opts = {}) {
 
   // 3. Payment: x402 (paste tx hash) or card (browser checkout -> credit ID).
   let payBody = { evidence, quote_id: quoteId, quote };
+  if ((action === 'evidence' || action === 'explain') && args.operationId) {
+    payBody.invocation_id = String(args.operationId);
+  }
   // Agents can supply a wallet-produced EIP-191 signature through a file;
   // private keys are never requested or handled by callx402.
   if (args.creditId) {
