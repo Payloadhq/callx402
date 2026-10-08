@@ -15,8 +15,7 @@ const { test } = require('node:test');
 const http = require('node:http');
 const path = require('node:path');
 const { createServer } = require('../server/index.js');
-const { ENVELOPE_KEYS, scratchDir, withEnv } = require('./helpers');
-
+const { ENVELOPE_KEYS, scratchDir, withEnv, needsV2Tree } = require('./helpers');
 // The in-process server's core reads the parent env: keep the idempotency
 // store hermetic for the whole file (each test file is its own process).
 const serverScratch = scratchDir('server');
@@ -59,7 +58,7 @@ function assertEnvelopeShape(t, env, action) {
   if (action !== undefined) t.assert.strictEqual(env.action, action);
 }
 
-test('GET /health -> 200 with version and subsystem map', async (t) => {
+test('GET /health -> 200 with version and subsystem map', needsV2Tree, async (t) => {
   const { server, port } = await startServer();
   try {
     const r = await request(port, 'GET', '/health');
@@ -134,7 +133,7 @@ test('unknown route -> 404', async (t) => {
   }
 });
 
-test('disabled subsystem over HTTP -> 503, honest envelope', async (t) => {
+test('disabled subsystem over HTTP -> 503, honest envelope', needsV2Tree, async (t) => {
   const { server, port } = await startServer();
   try {
     const r = await request(port, 'POST', '/resolve', { body: { evidence: {} } });
@@ -147,7 +146,7 @@ test('disabled subsystem over HTTP -> 503, honest envelope', async (t) => {
   }
 });
 
-test('settlement UNKNOWN over HTTP -> 409 with fail-closed envelope', async (t) => {
+test('settlement UNKNOWN over HTTP -> 409 with fail-closed envelope', needsV2Tree, async (t) => {
   await withEnv({ PAYLOAD_SETTLEMENT_RESOLVER: '1' }, async () => {
     const { server, port } = await startServer();
     try {
