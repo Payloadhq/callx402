@@ -1,6 +1,6 @@
 # What Callx402 Is, What It Can Do, and How to Use It
 
-**Version:** 1.0.0 · **Status:** v1.0.0 released, installable from GitHub · **Verified against:** `cli-help-verified-2026-10-06.txt`, `SPEC.md`, `core/`, `server/index.js`, `sdk/`, and the test suite (2026-10-06).
+**Version:** 1.0.1 · **Status:** published on npm as `callx402@1.0.1` · **Verified against:** `cli-help-verified-2026-10-06.txt`, `SPEC.md`, `core/`, `server/index.js`, `sdk/`, and the test suite (2026-10-06), plus a clean-install audit 2026-10-07.
 
 ## The one-paragraph definition
 
@@ -20,7 +20,7 @@ Callx402 sits between the caller and the subsystems. There are three entry point
 
 All three entry points converge on one dispatcher, `core/index.js` (`runAction` / `runIntent`), and return one shared shape: the result envelope from SPEC section 4.
 
-The subsystems themselves live in the x402 paid API starter kit v2.0.0 tree (`~/workspace/products/x402-paid-api-starter-kit/v2.0.0`). Callx402 imports from that tree via lazy `require` and never writes anything under it; an integrity test ("zero files changed under the v2.0.0 tree") guards this invariant. A separate Veyline recovery track (`core/veyline.js`) resolves modules from the Veyline engineering recovery directory instead.
+The subsystems themselves live in the Veyline Developer Primer v2.0.0 tree (x402-paid-api-starter-kit) (`~/workspace/products/x402-paid-api-starter-kit/v2.0.0`). Callx402 imports from that tree via lazy `require` and never writes anything under it; an integrity test ("zero files changed under the v2.0.0 tree") guards this invariant. A separate Veyline recovery track (`core/veyline.js`) resolves modules from the Veyline engineering recovery directory instead.
 
 ## The Veyline relationship
 
@@ -217,7 +217,7 @@ Hard invariants, enforced in the core and honored by the CLI, SDKs, and HTTP ser
 - **The approval threshold fails closed.** Planned cost above the threshold (default $5.00 USD) without explicit `--approve` refuses with exit 4. Default budget is $1.00 USD.
 - **Idempotency keys are honored.** A duplicate key returns the original stored result with `deduped:true`; nothing re-executes. The store is a file-backed JSONL log (`~/.config/callx402/idempotency.jsonl`, overridable with `CALLX402_IDEMPOTENCY_FILE`).
 - **Disabled or unreachable subsystems fail closed.** They name the subsystem and its flag; success is never faked.
-- **Feature flags are per-module.** Each subsystem exposes `FLAG` and `enabled()`; callx402 checks before dispatch and never force-enables anything that guards money movement. Default state is off: a fresh `callx402 status` reports 15/15 subsystems reachable and 0/15 enabled.
+- **Feature flags are per-module.** Each subsystem exposes `FLAG` and `enabled()`; callx402 checks before dispatch and never force-enables anything that guards money movement. Default state is off: with the v2.0.0 tree present, a fresh `callx402 status` reports 15/15 subsystems reachable and 0/15 enabled; on a bare `npm install callx402` (no tree) it reports 0/15 reachable.
 
 ## Configuration
 
@@ -227,9 +227,10 @@ Config file: `~/.config/callx402/config.json` (override the path with `CALLX402_
 
 ## Current limitations
 
+- **Subsystem commands need the v2.0.0 tree.** `diagnose`, `rescue`, `route`, `resolve`, `doctor`, `monitor`, `preflight`, and `inspect` dispatch into the Veyline Developer Primer v2.0.0 tree, which is a separate checkout, not an npm dependency. On a bare `npm install callx402` they exit 3 with `subsystem_unreachable`. Point `CALLX402_V2_ROOT` at the tree, or run in remote mode against your own callx402 server.
 - **No live execution route is wired.** The `execute` pipeline is honest about this: without a real executable route it returns "no executable route available," moves no money, and issues no effect proof. Execution side effects would require a live route plus an enabled execution kernel.
 - **Subsystems are disabled by default.** Each action exits 3 naming the flag (e.g. `PAYLOAD_SENTINEL=1`) until the operator enables it.
-- **Rescue is triage only.** Even with auth, callx402 runs detection, quoting, and a free-vs-paid offer; paid execution is explicitly not performed.
+- **Rescue is triage only.** Even with auth, this local command runs detection, quoting, and a free-vs-paid offer; paid execution is performed only through the paid on-demand callx402 action path, never by this local command.
 - **Diagnosis and resolution depend on supplied evidence.** `diagnose` evaluates evidence deterministically; `resolve` on empty evidence yields UNKNOWN.
 - **The capability graph is experimental** (`createGraph()` throws unless `PAYLOAD_MCP_FABRIC=1`), so `route` and `inspect` have nothing to rank or look up until tools are registered under that flag.
 - **HTTP covers five POST routes only** (`/call`, `/rescue`, `/route`, `/resolve`, `/diagnose`); `monitor`, `preflight`, `inspect`, `evidence`, `explain`, `recover`, and `config` are CLI/SDK only.
