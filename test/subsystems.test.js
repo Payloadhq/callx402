@@ -12,8 +12,7 @@ const { test } = require('node:test');
 const path = require('node:path');
 const { runAction } = require('../core/index.js');
 const { getSubsystem } = require('../core/subsystems.js');
-const { assertEnvelope, scratchDir, withEnv } = require('./helpers');
-
+const { assertEnvelope, scratchDir, withEnv, needsV2Tree } = require('./helpers');
 const scratch = scratchDir('subsys');
 const hermetic = {
   CALLX402_CONFIG: path.join(scratch, 'config.json'),
@@ -26,7 +25,7 @@ function realModule(name) {
   return h.module;
 }
 
-test('rescue dispatch calls the real rescue module surface; no token -> auth_required exit 3', async (t) => {
+test('rescue dispatch calls the real rescue module surface; no token -> auth_required exit 3', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     const { result, exitCode } = await runAction('rescue', { incident: 'inc-9' }, { deps: { rescue: realModule('rescue') } });
     t.assert.strictEqual(exitCode, 3);
@@ -36,7 +35,7 @@ test('rescue dispatch calls the real rescue module surface; no token -> auth_req
   });
 });
 
-test('rescue dispatch with --auth runs real triage (read-only)', async (t) => {
+test('rescue dispatch with --auth runs real triage (read-only)', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     const { result, exitCode } = await runAction('rescue', { incident: 'inc-9', auth: true }, { deps: { rescue: realModule('rescue') } });
     t.assert.strictEqual(exitCode, 0);
@@ -47,7 +46,7 @@ test('rescue dispatch with --auth runs real triage (read-only)', async (t) => {
   });
 });
 
-test('doctor dispatch executes real runMcpDoctor and returns stages', async (t) => {
+test('doctor dispatch executes real runMcpDoctor and returns stages', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     const { result, exitCode } = await runAction('diagnose', {}, { deps: { doctor: realModule('doctor') } });
     t.assert.strictEqual(exitCode, 0);
@@ -62,7 +61,7 @@ test('doctor dispatch executes real runMcpDoctor and returns stages', async (t) 
   });
 });
 
-test('router dispatch runs real selectTool/rankTools over candidates', async (t) => {
+test('router dispatch runs real selectTool/rankTools over candidates', needsV2Tree, async (t) => {
   // The real smart-router asserts PAYLOAD_MCP_FABRIC=1 on rank/select.
   await withEnv({ ...hermetic, PAYLOAD_MCP_FABRIC: '1' }, async () => {
     const candidates = [
@@ -87,7 +86,7 @@ test('router dispatch runs real selectTool/rankTools over candidates', async (t)
   });
 });
 
-test('router dispatch honors the fast speed policy', async (t) => {
+test('router dispatch honors the fast speed policy', needsV2Tree, async (t) => {
   await withEnv({ ...hermetic, PAYLOAD_MCP_FABRIC: '1' }, async () => {
     const candidates = [
       { tool: 'cheap-slow', price_usd: 0.2, expected_latency_ms: 900 },
@@ -102,7 +101,7 @@ test('router dispatch honors the fast speed policy', async (t) => {
   });
 });
 
-test('settlement dispatch resolves real states (DEFINITELY_PAID evidence)', async (t) => {
+test('settlement dispatch resolves real states (DEFINITELY_PAID evidence)', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     const settlement = realModule('settlement');
     const probe = settlement.resolve({ txHash: '0x' + 'ab'.repeat(32), confirmations: 12, expectedAmount: '1.00', actualAmount: '1.00', asset: 'USDC' });
