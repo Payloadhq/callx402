@@ -19,7 +19,7 @@
  */
 
 const { randomBytes } = require('node:crypto');
-const { buildAuthMessage, readSignedAuthorization } = require('./payer-auth.js');
+const { buildAuthMessage, actionRequestHash, readSignedAuthorization } = require('./payer-auth.js');
 const RAIL_BASE = process.env.CALLX402_RAIL || 'https://payload-rail.fly.dev';
 const RAIL_ACTIONS = [
   'diagnose', 'doctor', 'resolve', 'preflight',
@@ -166,7 +166,8 @@ async function invokeRail(command, args, opts = {}) {
     try { auth = readSignedAuthorization(String(args.payerAuth)); }
     catch (err) { return { ok: false, error: `Invalid payer authorization: ${err.message}` }; }
     if (auth.txHash?.toLowerCase() !== String(args.txHash).toLowerCase() ||
-        auth.action !== action || auth.quote_id !== quoteId) {
+        auth.action !== action || auth.quote_id !== quoteId ||
+        auth.request_hash !== actionRequestHash(action, payBody)) {
       return { ok: false, error: 'Signed authorization does not match the transaction, action, and current quote.' };
     }
     payBody = { ...payBody, txHash: String(args.txHash).toLowerCase(), payer_auth: auth };
@@ -223,6 +224,7 @@ async function invokeRail(command, args, opts = {}) {
     }
     const auth = {
       wallet, action, txHash: txHash.toLowerCase(), quote_id: quoteId,
+      request_hash: actionRequestHash(action, payBody),
       network: accept.network || 'eip155:8453',
       recipient: accept.payTo,
       nonce: '0x' + randomBytes(16).toString('hex'),
