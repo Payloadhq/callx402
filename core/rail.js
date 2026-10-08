@@ -121,12 +121,27 @@ async function invokeRail(command, args, opts = {}) {
   const evidence = buildEvidence(action, args);
   const interactive = process.stdin.isTTY && !opts.yes;
 
-  // 1. Free quote first.
+  // 1. Fresh quote for new actions; previously paid agent redemptions
+  // must reuse their ORIGINAL signed quote. A fresh quote has a different
+  // issuedAt/quote_id and would invalidate an otherwise authentic signature.
   let quote;
+  let signedAuthorization = null;
   try {
-    quote = await getQuote(action);
+    if (args.txHash && args.payerAuth) {
+      signedAuthorization = readSignedAuthorization(String(args.payerAuth));
+      if (!signedAuthorization.quote_inputs || typeof signedAuthorization.quote_inputs !== 'object') {
+        throw new Error('Signed authorization file must include the canonical quote_inputs from the original quote.');
+      }
+      quote = {
+        quote_id: signedAuthorization.quote_id,
+        quote_inputs: signedAuthorization.quote_inputs,
+        quoted_price_usd: signedAuthorization.quoted_price_usd ?? 'see signed quote',
+      };
+    } else {
+      quote = await getQuote(action);
+    }
   } catch (err) {
-    return { ok: false, error: `Could not reach the hosted rail for a free quote: ${err.message}` };
+    return { ok: false, error: `Unable to load a valid payment quote: ${err.message}` };
   }
   const price = quote.quoted_price_usd;
   const quoteId = quote.quote_id;
@@ -142,7 +157,7 @@ async function invokeRail(command, args, opts = {}) {
       return {
         ok: false,
         error: `Payment of $${price} required. Re-run with --yes to approve non-interactively, or run interactively.`,
-        quote: { action, price_usd: price, quote_id: quoteId },
+        quote: { action, price_usd: price, quote_id: quoteId, quote_inputs: quote.quote_inputs },
       };
     }
     const approve = await prompt(`  Approve $${price} for '${action}'? [y/N] `);
@@ -162,9 +177,7 @@ async function invokeRail(command, args, opts = {}) {
     payBody = { ...payBody, credit_id: String(args.creditId) };
   } else if (args.txHash && args.payerAuth) {
     if (!quote.quote_inputs) return { ok: false, error: 'Rail must return canonical quote_inputs before signed redemption.' };
-    let auth;
-    try { auth = readSignedAuthorization(String(args.payerAuth)); }
-    catch (err) { return { ok: false, error: `Invalid payer authorization: ${err.message}` }; }
+    const auth = signedAuthorization;
     if (auth.txHash?.toLowerCase() !== String(args.txHash).toLowerCase() ||
         auth.action !== action || auth.quote_id !== quoteId ||
         auth.request_hash !== actionRequestHash(action, payBody)) {
@@ -183,6 +196,23 @@ async function invokeRail(command, args, opts = {}) {
   if (!payBody.credit_id && !payBody.payer_auth) {
   const method = await prompt('  Pay with [1] USDC on Base (paste tx hash after paying) or [2] card via browser? [1/2] ');
   if (method === '2') {
+    // Stripe is a distinct price path; never imply its fee equals the
+    // previously displayed micropayment quote.
+    let cardPrice;
+    try {
+      const catalog = await railFetch('/v1/callx402/actions');
+      const item = catalog.body?.actions?.find(a => a.action === action);
+      if (catalog.status !== 200 || !Number.isSafeInteger(item?.amount_cents) || item.amount_cents <= 0) {
+        throw new Error('card fee not available');
+      }
+      cardPrice = (item.amount_cents / 100).toFixed(2);
+    } catch {
+      return { ok: false, error: 'Could not confirm the exact card price. Checkout cancelled before payment.' };
+    }
+    const cardApproval = await prompt(`  Card checkout total $ ${cardPrice} USD for '${action}'. Continue? [y/N] `);
+    if (!/^y(es)?$/i.test(cardApproval)) {
+      return { ok: false, error: 'Card checkout cancelled before payment.' };
+    }
     // Stripe checkout path.
     const { status, body } = await railFetch('/v1/callx402/checkout', {
       method: 'POST',
