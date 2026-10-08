@@ -18,3 +18,7 @@ jobs:
       - run: node --check core/rail.js
       - run: node --check core/payer-auth.js
       - run: node --check bin/callx402.js
+      - name: Validate package/lockfile version parity
+        run: node -e "const p=require('./package.json');const l=require('./package-lock.json');if(p.version!==l.version||p.version!==l.packages[''].version)process.exit(1)"
+      - name: Verify npm release archive without publishing
+        run: npm pack --dry-run
