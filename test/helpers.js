@@ -104,3 +104,20 @@ async function withEnv(vars, fn) {
 }
 
 module.exports = { ROOT, CLI, V2_ROOT, ENVELOPE_KEYS, scratchDir, cliEnv, runCLI, assertEnvelope, withEnv };
+
+/**
+ * v2 tree availability gate. The v2.0.0 runtime tree is the optional advanced
+ * self-hosted mode, not a requirement. Tests that exercise the local subsystem
+ * path skip (not fail) when the tree is absent — on a clean machine the CLI
+ * routes to the hosted rail by default instead.
+ */
+function v2TreeAvailable() {
+  try {
+    require('node:fs').accessSync(require('node:path').join(V2_ROOT, 'lib', 'mcp', 'doctor.js'));
+    return true;
+  } catch { return false; }
+}
+const needsV2Tree = { skip: !v2TreeAvailable() };
+
+module.exports.v2TreeAvailable = v2TreeAvailable;
+module.exports.needsV2Tree = needsV2Tree;
