@@ -301,20 +301,30 @@ read-only diagnostic server-side and returns the result**. No local setup, no
 separate tree, no keys. The rail never fakes execution: every result is
 produced by the diagnostic modules over the evidence you supply.
 
-The quote-before-payment flow, verified live:
+The hosted quote-before-payment flow:
 
 ```sh
-# 1. Free quote: exact price before anything is paid
+# 1. Obtain a free quote. No money moves.
 curl "https://payload-rail.fly.dev/v1/callx402/quote?action=resolve&path=x402"
-# -> {"quote_id":"...","quoted_price_usd":"0.25", ...}
 
-# 2. Invoke unauthenticated -> x402 v2 402 with the exact payment terms
-curl -X POST https://payload-rail.fly.dev/v1/callx402/actions/resolve \
-  -H 'Content-Type: application/json' -d '{"evidence":"{...}"}'
-# -> HTTP 402: exact USDC amount on Base, pay-to address, 300s window, quote_id
+# 2. Run the interactive client. Pay explicitly by card or with USDC.
+#    For USDC redemption, the paying wallet must EIP-191-sign the exact
+#    authorization message displayed by the CLI.
+callx402 resolve --evidence '{"txHash":"0x..."}'
 
-# 3. Pay deliberately from an authorized wallet, then retry with {txHash, quote_id}
+# 3. Agents with an external wallet-produced signature can redeem the
+#    ORIGINAL canonical quote with a signed authorization file:
+callx402 resolve --evidence '{"txHash":"0x..."}' \
+  --tx-hash 0xYOUR_SETTLED_PAYMENT_HASH \
+  --payer-auth @signed-auth.json --approve
 ```
+
+A public transaction hash alone never authorizes an action. The signed authorization
+binds the paying wallet, action, transaction hash, quote, recipient, network,
+and request inputs. Keep the original `quote_inputs` with the signed authorization;
+requesting a new quote does not authorize an older payment. **Never give Payload
+a private key, seed phrase, or wallet recovery phrase.** EIP-1271 contract-wallet
+redemption is not currently enabled. Stripe credits use a separate redemption path.
 
 Live fee schedule: `GET https://payload-rail.fly.dev/v1/callx402/actions`
 (responds `"model":"paid on-demand per action; no subscription required"`).

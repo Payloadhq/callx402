@@ -305,6 +305,7 @@ function parseArgv(argv) {
   const KNOWN_FLAGS = new Set([
     'help', 'version', 'json', 'timeout', 'maxBudget', 'approvalThreshold',
     'idempotencyKey', 'evidence', 'incident', 'goal', 'intent', 'query',
+    'txHash', 'payerAuth', 'creditId',
     'target', 'speed', 'interval', 'network', 'networks', 'asset', 'assets',
     'providers', 'deadline', 'risk',
     'dryRun', 'approve', 'forceRetry', 'retry', 'auth', 'watch', 'once',
@@ -324,7 +325,8 @@ function parseArgv(argv) {
         i += 1;
         continue;
       }
-      const NEEDS_VALUE = new Set(['timeout', 'maxBudget', 'approvalThreshold', 'idempotencyKey', 'evidence', 'incident', 'goal', 'intent', 'query', 'target', 'speed', 'interval', 'network', 'networks', 'asset', 'assets', 'providers', 'deadline', 'risk', 'dir', 'operationId', 'identity']);
+      const NEEDS_VALUE = new Set(['timeout', 'maxBudget', 'approvalThreshold', 'idempotencyKey', 'evidence', 'incident', 'goal', 'intent', 'query', 'target',
+        'txHash', 'payerAuth', 'creditId', 'speed', 'interval', 'network', 'networks', 'asset', 'assets', 'providers', 'deadline', 'risk', 'dir', 'operationId', 'identity']);
       if (NEEDS_VALUE.has(name)) {
         if (val !== null) out.flags[name] = val;
         else if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) out.flags[name] = argv[++i];
@@ -503,7 +505,9 @@ async function main() {
     // payment/authorization -> result. Set CALLX402_LOCAL=1 to prefer the
     // local v2.0.0 runtime tree instead (advanced self-hosted mode).
     if (rail.isRailCommand(actionName) && !rail.preferLocal()) {
-      const railResult = await rail.invokeRail(actionName, args, { yes: args.approve, json: args.json });
+      const railResult = await rail.invokeRail(actionName,
+        { ...args, txHash: flags.txHash, payerAuth: flags.payerAuth, creditId: flags.creditId },
+        { yes: args.approve, json: args.json });
       if (args.json) {
         console.log(JSON.stringify(railResult, null, 2));
       } else if (railResult.ok) {

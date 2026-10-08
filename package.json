@@ -27,6 +27,6 @@
     "smoke": "node bin/callx402.js status --json",
     "test": "node --test test/*.test.js"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "mcpName": "io.github.payload-tools/callx402"
 }
