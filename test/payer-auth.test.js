@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { buildAuthMessage, readSignedAuthorization } = require('../core/payer-auth.js');
+const { buildAuthMessage, actionRequestHash, readSignedAuthorization } = require('../core/payer-auth.js');
 const { invokeRail, isRailCommand } = require('../core/rail.js');
 
 const txHash = '0x' + '22'.repeat(32);
@@ -10,6 +10,7 @@ const recipient = '0x' + '33'.repeat(20);
 const signature = '0x' + '44'.repeat(65);
 const authorization = () => ({
   wallet, action: 'resolve', txHash, quote_id: 'q_test',
+  request_hash: actionRequestHash('resolve', { evidence: '{}' }),
   network: 'eip155:8453', recipient, nonce: 'nonce_unique_1234',
   expiry: Math.floor(Date.now() / 1000) + 300, signature,
 });
@@ -21,6 +22,7 @@ test('client and Rail use canonical EIP-191 signer message', () => {
     'action:resolve',
     'txHash:' + txHash,
     'quote_id:q_test',
+    'request_hash:' + authorization().request_hash,
     'network:eip155:8453',
     'recipient:' + recipient,
     'nonce:nonce_unique_1234',
