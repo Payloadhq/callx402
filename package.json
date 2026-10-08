@@ -26,6 +26,6 @@
   "scripts": {
     "smoke": "node bin/callx402.js status --json"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "mcpName": "io.github.payload-tools/callx402"
 }
