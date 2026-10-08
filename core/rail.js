@@ -18,6 +18,8 @@
  * Nothing here signs, holds keys, or moves money.
  */
 
+const { randomBytes } = require('node:crypto');
+const { buildAuthMessage, readSignedAuthorization } = require('./payer-auth.js');
 const RAIL_BASE = process.env.CALLX402_RAIL || 'https://payload-rail.fly.dev';
 const RAIL_ACTIONS = [
   'diagnose', 'doctor', 'rescue', 'route', 'resolve', 'execute', 'monitor',
@@ -152,14 +154,29 @@ async function invokeRail(command, args, opts = {}) {
 
   // 3. Payment: x402 (paste tx hash) or card (browser checkout -> credit ID).
   let payBody = { evidence, quote_id: quoteId, quote };
-  if (!interactive) {
+  // Agents can supply a wallet-produced EIP-191 signature through a file;
+  // private keys are never requested or handled by callx402.
+  if (args.creditId) {
+    payBody = { ...payBody, credit_id: String(args.creditId) };
+  } else if (args.txHash && args.payerAuth) {
+    let auth;
+    try { auth = readSignedAuthorization(String(args.payerAuth)); }
+    catch (err) { return { ok: false, error: `Invalid payer authorization: ${err.message}` }; }
+    if (auth.txHash?.toLowerCase() !== String(args.txHash).toLowerCase() ||
+        auth.action !== action || auth.quote_id !== quoteId) {
+      return { ok: false, error: 'Signed authorization does not match the transaction, action, and current quote.' };
+    }
+    payBody = { ...payBody, txHash: String(args.txHash).toLowerCase(), payer_auth: auth };
+  } else {
+  if (!payBody.credit_id && !payBody.payer_auth && !interactive) {
     return {
       ok: false,
-      error: 'Interactive payment required.',
+      error: 'Non-interactive payment requires --credit-id or --tx-hash with --payer-auth @file.',
       quote: { action, price_usd: price, quote_id: quoteId },
-      payment_instructions: `POST ${RAIL_BASE}/v1/callx402/actions/${action} with { evidence, quote_id, quote } to receive a 402, pay, then re-POST with { txHash } or { credit_id }.`,
+      payment_instructions: `Use --credit-id or --tx-hash plus --payer-auth @signed-auth.json after an authorized wallet signature; a bare txHash is never enough.`,
     };
   }
+  if (!payBody.credit_id && !payBody.payer_auth) {
   const method = await prompt('  Pay with [1] USDC on Base (paste tx hash after paying) or [2] card via browser? [1/2] ');
   if (method === '2') {
     // Stripe checkout path.
@@ -196,7 +213,32 @@ async function invokeRail(command, args, opts = {}) {
     if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
       return { ok: false, error: 'Invalid transaction hash format.' };
     }
-    payBody = { ...payBody, txHash: txHash.toLowerCase() };
+    const wallet = await prompt('  Payer wallet address (0x...): ');
+    if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+      return { ok: false, error: 'A valid Ethereum payer wallet address is required.' };
+    }
+    const auth = {
+      wallet, action, txHash: txHash.toLowerCase(), quote_id: quoteId,
+      network: accept.network || 'eip155:8453',
+      recipient: accept.payTo,
+      nonce: '0x' + randomBytes(16).toString('hex'),
+      expiry: Math.floor(Date.now() / 1000) + 300,
+    };
+    if (!/^0x[0-9a-fA-F]{40}$/.test(auth.recipient || '')) {
+      return { ok: false, error: 'The payment challenge omitted a valid recipient; refusing redemption.' };
+    }
+    const signingMessage = buildAuthMessage(auth);
+    console.log('\n  Sign the exact message below using your paying wallet (EIP-191 personal_sign).');
+    console.log('  NEVER paste a seed phrase, private key, or recovery code.\n');
+    console.log(signingMessage);
+    console.log();
+    const signature = await prompt('  Paste wallet signature (0x...): ');
+    if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+      return { ok: false, error: 'Expected a 65-byte Ethereum personal_sign signature.' };
+    }
+    payBody = { ...payBody, txHash: txHash.toLowerCase(),
+      payer_auth: { ...auth, signature } };
+  }
   }
 
   // 4. Submit payment proof -> verified, executed, metered -> result.
@@ -206,6 +248,12 @@ async function invokeRail(command, args, opts = {}) {
   });
   if (status === 402) {
     return { ok: false, error: 'Payment not yet recognized. The quote may have expired — re-run to get a fresh quote.' };
+  }
+  if (status === 401) {
+    return { ok: false, error: `Wallet authorization rejected: ${body?.error?.message || 'check signed message and wallet'}` };
+  }
+  if (status === 422) {
+    return { ok: false, error: `Action could not execute: ${body?.error?.message || body?.execution?.error || 'not available'}` };
   }
   if (status === 409) {
     return { ok: false, error: `Already used: ${body?.error?.message || 'this payment was already consumed'}.` };
