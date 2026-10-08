@@ -37,3 +37,39 @@ Options:
 
 Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
 4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+
+================================================================================
+ADDENDUM 2026-10-07 — per-command help and rail-only routing hint
+================================================================================
+Change: `callx402 <command> --help` now prints that command's own usage
+instead of the global help (bin/callx402.js COMMAND_HELP). Bare
+`callx402 --help` output is unchanged (verified identical above). Unknown
+commands matching a rail-only paid action (safe_retry, duplicate_payment_risk,
+failure_classification, settlement_interpretation, hyphenated aliases) now get
+a routing hint to docs/problem-map.md instead of a bare usage error.
+
+$ callx402 recover --help   (exit 0)
+callx402 recover — report the safe recovery decision (read-only).
+
+Usage:
+  callx402 recover <operationId> [--identity <id> | --evidence <json>]
+
+Evaluates recorded history against the operation identity and returns the
+recovery decision: RECOVERABLE, SAFE_RETRY, EXECUTED_BUT_UNRECOVERABLE, or
+SETTLEMENT_UNKNOWN, mapped to KNOWN_SAFE or HUMAN_REVIEW. Never charges,
+never executes, never repays. Requires PAYLOAD_VEYLINE_RECOVERY=1.
+
+This is the read-only answer to "is a retry safe?" — a SAFE_RETRY verdict
+here is advisory; performing the safe action stays with your own adapters.
+For the paid one-off verdict on a specific retry plan, use the 'safe_retry'
+rail action (quote first, then pay; see docs/problem-map.md). The MCP tool
+x402_recover covers the same free diagnostic.
+
+Exit codes: 0 ok · 1 failure · 2 usage (missing identity/evidence) ·
+3 disabled/unreachable · 4 budget refused ·
+5 settlement unknown (never auto-retry, never repay).
+
+$ callx402 safe_retry   (exit 2, stderr)
+callx402: unknown command 'safe_retry' — 'safe_retry' is a paid on-demand rail action, not a CLI command. Get the free quote, then pay deliberately: see docs/problem-map.md
+Valid commands: diagnose, rescue, route, resolve, doctor, execute, monitor, status, preflight, inspect, config, evidence, explain, recover
+Run 'callx402 --help' for usage, or 'callx402 <command> --help' for one command.
