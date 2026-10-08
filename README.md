@@ -15,12 +15,30 @@ callx402 is the universal action layer into Veyline's x402 infrastructure. Say w
 
 **Why it exists:** x402 failures are expensive and opaque. A settlement attempt ends in `settlement_pending` and nobody knows whether the money moved. A 402 response your wallet misreads. A retry that signs a second authorization for the same intent and pays twice. callx402 exists for exactly those moments: `diagnose` pins the failure to a stage, `rescue` triages the incident, `resolve` settles the question from evidence, `route` finds the cheapest viable path, `execute` runs under a hard budget.
 
-**Try it (one minute):**
+**Try it (two minutes, no setup, no account):**
 ```sh
-git clone https://github.com/Payloadhq/callx402
-cd callx402 && npm install && npm link
-callx402 diagnose --target "https://api.example.com/x402/pay"
+npm install -g callx402
+callx402 status
+callx402 'complete this job for under $1'
 ```
+
+`status` prints an honest per-subsystem reachability report, no credentials
+needed. The intent line parses and plans your request, then stops before
+executing anything: with no live tool endpoint wired it reports "no
+executable route available", so no money moves. (Use single quotes: in
+double quotes your shell would eat the `$1`.)
+
+Free read-only checks against the live Payload rail:
+
+```sh
+curl https://payload-rail.fly.dev/v1/callx402/actions
+curl 'https://payload-rail.fly.dev/v1/callx402/quote?action=diagnose'
+```
+
+The first returns the paid action catalog with prices; the second returns a
+free price quote for one action. Invoking a rail action is paid per action
+via checkout (see https://payloadhq.github.io/agents.json); these commands
+never pay anything.
 
 If it saves you one debugging session, star the repo and read on.
 
@@ -59,6 +77,11 @@ Ask the client to list its MCP tools: the six `x402_*` tools should appear.
 Per-client notes and the raw stdio test handshake:
 [`integrations/mcp-clients/`](integrations/mcp-clients/).
 
+Note: `x402_status` works with zero setup. The other five tools dispatch
+into the v2.0.0 subsystem tree, so they report `subsystem_unreachable`
+until `CALLX402_V2_ROOT` points at the tree (see "Full subsystem commands"
+above) and the matching flag is enabled.
+
 ## The relationship
 
 - **PAYLOAD** = the parent company.
@@ -88,17 +111,22 @@ Behavioral usage language (not trademark claims):
 
 ## Quickstart
 
+### 1. Install
+
 ```sh
-npm install callx402
+npm install -g callx402
 ```
 
-Alternative — install direct from GitHub (keeps working as a fallback):
+Or locally in a project: `npm install callx402` (the binary is then at
+`node_modules/.bin/callx402`).
+
+Fallback, install direct from GitHub:
 
 ```sh
 npm install Payloadhq/callx402
 ```
 
-Alternative — clone and link for local development:
+Local development:
 
 ```sh
 git clone https://github.com/Payloadhq/callx402
@@ -107,13 +135,73 @@ npm install
 npm link        # exposes the `callx402` command
 ```
 
+### 2. First run: what works with zero setup
+
 ```sh
 callx402 status
-callx402 "complete this job for under $1"
-callx402 diagnose --target "https://api.example.com/x402/pay"
+callx402 'complete this job for under $1'
+```
+
+`status` is the honest starting point: a per-subsystem reachability report.
+On a bare npm install it reads `0/15 subsystems reachable`, which is
+expected (see step 3). The intent line plans in plain language and stops
+before execution, so it is always safe to run; use single quotes so your
+shell does not eat `$1`.
+
+Free read-only checks against the live Payload rail (no account, no keys):
+
+```sh
+curl https://payload-rail.fly.dev/v1/callx402/actions
+curl 'https://payload-rail.fly.dev/v1/callx402/quote?action=diagnose'
+```
+
+These return the paid action catalog with prices and a free price quote for
+one action. Invoking a rail action is paid per action via checkout (machine
+front door: https://payloadhq.github.io/agents.json); nothing here pays
+anything.
+
+### 3. Full subsystem commands
+
+`diagnose`, `rescue`, `route`, `resolve`, `doctor`, `monitor`, `preflight`,
+and `inspect` dispatch into the v2.0.0 subsystem tree (the Veyline Developer
+Primer, `x402-paid-api-starter-kit`), a separate checkout that is not an npm
+dependency. Without it these commands exit 3 with `subsystem_unreachable`
+and do nothing. If you have the tree, point at it:
+
+```sh
+export CALLX402_V2_ROOT=/path/to/x402-paid-api-starter-kit/v2.0.0
+callx402 status    # now: 15/15 reachable, 0/15 enabled
+```
+
+(The default is a `x402-paid-api-starter-kit/v2.0.0` directory sitting next
+to your callx402 checkout.)
+
+Subsystems are disabled by default; `status` names the flag that enables
+each one. Set a flag, then run its command:
+
+```sh
+export PAYLOAD_MCP_DOCTOR=1
+callx402 diagnose --target 'https://api.example.com/x402/pay'
+```
+
+More examples (each needs its subsystem flag enabled; run `callx402 status`
+to see the flag names):
+
+```sh
 callx402 rescue --incident inc_123
-callx402 route --goal "fetch 100 product prices for under $0.50"
+callx402 route --goal 'fetch 100 product prices for under 0.50 USD'
 callx402 resolve --evidence '{"txHash":"0xabc..."}'
+```
+
+Note the single quotes: the goal text contains `$`-style amounts that a
+shell would expand inside double quotes.
+
+Alternative to the local tree: run in remote mode against your own callx402
+server (`server/index.js`):
+
+```sh
+export CALLX402_MODE=remote
+export CALLX402_REMOTE_URL=http://127.0.0.1:8787
 ```
 
 ### JavaScript SDK
@@ -172,7 +260,48 @@ Full HTTP surface: `server/openapi.yaml` (served live at `GET /openapi.json`).
 | `callx402 monitor [--once\|--watch]` | Watch subsystem/incident state |
 | `callx402 preflight` | Preflight checks before a paid run |
 | `callx402 inspect [--query <text>]` | Inspect capability graph / state |
+| `callx402 evidence <operationId> [--dir <path>]` | Show recorded evidence for an operation (read-only) |
+| `callx402 explain <operationId> [--dir <path>]` | Plain-language state assessment for an operation (read-only) |
+| `callx402 recover <operationId> [--identity <id> \| --evidence <json>]` | Safe recovery decision: RECOVERABLE / SAFE_RETRY / HUMAN_REVIEW (read-only) |
 | `callx402 config list \| get <k> \| set <k> <v>` | Manage local config |
+
+Subsystem commands (`diagnose`, `rescue`, `route`, `resolve`, `doctor`,
+`monitor`, `preflight`, `inspect`) need the v2.0.0 tree plus the matching
+feature flag (see "Full subsystem commands" above); without them they exit 3
+and do nothing. `status`, intent mode, and `config` work with zero setup.
+
+## Paid one-off diagnostics (no subscription)
+
+The CLI and MCP tools above are the **free local tier**: read-only
+diagnostics that never charge, never execute, and never move money. When a
+free diagnostic is not enough — you need the production rail to resolve a
+settlement, judge a specific retry plan, or triage an incident end to end —
+each action is also available as a **paid one-off rail action**. No
+subscription, no account: quote, then pay deliberately.
+
+The quote-before-payment flow, verified live:
+
+```sh
+# 1. Free quote: exact price before anything is paid
+curl "https://payload-rail.fly.dev/v1/callx402/quote?action=resolve&path=x402"
+# -> {"quote_id":"...","quoted_price_usd":"0.25", ...}
+
+# 2. Invoke unauthenticated -> x402 v2 402 with the exact payment terms
+curl -X POST https://payload-rail.fly.dev/v1/callx402/actions/resolve \
+  -H 'Content-Type: application/json' -d '{"evidence":"{...}"}'
+# -> HTTP 402: exact USDC amount on Base, pay-to address, 300s window, quote_id
+
+# 3. Pay deliberately from an authorized wallet, then retry with {txHash, quote_id}
+```
+
+Live fee schedule: `GET https://payload-rail.fly.dev/v1/callx402/actions`
+(responds `"model":"paid on-demand per action; no subscription required"`).
+The x402-path price is the Stripe-path fee divided by 20 — for example
+`resolve` is $5.00 via Stripe, $0.25 via the x402 path. Never blind-retry a
+payment to reach a paid action: get the quote first.
+
+Problem to action map (which paid action answers which failure, with the free
+CLI/MCP path for each): [`docs/problem-map.md`](docs/problem-map.md).
 
 ## Integrations
 
