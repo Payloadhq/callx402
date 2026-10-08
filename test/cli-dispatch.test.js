@@ -230,7 +230,8 @@ test('malformed input: bad flag values -> exit 2 with clear message', async (t) 
 test('--version prints version and exits 0', async (t) => {
   const r = await runCLI(['--version'], env());
   t.assert.strictEqual(r.code, 0);
-  t.assert.match(r.stdout.trim(), /^callx402 0\.1\.0$/);
+  const pkg = require('../package.json');
+  t.assert.strictEqual(r.stdout.trim(), `callx402 ${pkg.version}`);
 });
 
 test('--help exits 0 and documents commands', async (t) => {
@@ -238,6 +239,25 @@ test('--help exits 0 and documents commands', async (t) => {
   t.assert.strictEqual(r.code, 0);
   t.assert.match(r.stdout, /callx402 <command>/);
   t.assert.match(r.stdout, /Exit codes: 0 ok/);
+});
+
+test('<command> --help prints that command usage, not the global help', async (t) => {
+  const r = await runCLI(['recover', '--help'], env());
+  t.assert.strictEqual(r.code, 0);
+  t.assert.match(r.stdout, /callx402 recover/);
+  t.assert.match(r.stdout, /PAYLOAD_VEYLINE_RECOVERY=1/);
+  t.assert.doesNotMatch(r.stdout, /callx402 <command>/);
+  const r2 = await runCLI(['resolve', '--help'], env());
+  t.assert.strictEqual(r2.code, 0);
+  t.assert.match(r2.stdout, /settlement UNKNOWN, exit 5/);
+});
+
+test('rail-only paid action as command -> exit 2 with routing hint', async (t) => {
+  const r = await runCLI(['safe_retry'], env());
+  t.assert.strictEqual(r.code, 2);
+  t.assert.match(r.stderr, /unknown command 'safe_retry'/);
+  t.assert.match(r.stderr, /paid on-demand rail action, not a CLI command/);
+  t.assert.match(r.stderr, /problem-map\.md/);
 });
 
 test('human-readable (non-JSON) output is concise', async (t) => {
