@@ -14,10 +14,11 @@ const { loadConfig } = require('./config');
 const { getSubsystem, getStatus: statusOf, SUBSYSTEMS } = require('./subsystems');
 const { runIntent } = require('./pipeline');
 const { dispatchRemote } = require('./remote');
+const { actEvidence, actExplain, actRecover } = require('./veyline');
 
-const ACTIONS = ['diagnose', 'rescue', 'route', 'resolve', 'doctor', 'execute', 'monitor', 'status', 'preflight', 'inspect'];
+const ACTIONS = ['diagnose', 'rescue', 'route', 'resolve', 'doctor', 'execute', 'monitor', 'status', 'preflight', 'inspect', 'evidence', 'explain', 'recover'];
 
-/** Parse --evidence style input: JSON string or @file. */
+/** Parse --evidence style input: JSON string or @file. Strict: bad JSON is a usage error. */
 function readEvidenceInput(input, fs, path) {
   if (input === undefined || input === null || input === '') return {};
   if (typeof input !== 'string') return input;
@@ -28,6 +29,29 @@ function readEvidenceInput(input, fs, path) {
     return JSON.parse(raw);
   }
   return JSON.parse(s);
+}
+
+/**
+ * Parse diagnose input. --evidence stays strict JSON (or @file). --target
+ * accepts a plain URL or identifier string: when it is not valid JSON it is
+ * wrapped as { target } evidence so the documented
+ * `diagnose --target <url>` example works as printed.
+ */
+function readDiagnoseInput(args, fs, path) {
+  const ev = args.evidence;
+  if (ev !== undefined && ev !== null && ev !== '') return readEvidenceInput(ev, fs, path);
+  const t = args.target;
+  if (t === undefined || t === null || t === '') return {};
+  const s = String(t).trim();
+  if (s.startsWith('@')) {
+    const raw = fs.readFileSync(path.resolve(s.slice(1)), 'utf8');
+    return JSON.parse(raw);
+  }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return { target: s };
+  }
 }
 
 function disabledResult(action, subsystem, handle) {
@@ -48,7 +72,9 @@ function unreachableResult(action, subsystem, handle) {
     result: fail(action, {
       subsystem, subsystemStatus: 'unreachable',
       code: 'subsystem_unreachable',
-      message: `${subsystem} subsystem could not be loaded (${handle.error || 'unknown error'}). Nothing was executed.`,
+      message: `${subsystem} subsystem could not be loaded (${handle.error || 'unknown error'}). Nothing was executed. ` +
+        `To enable: set CALLX402_V2_ROOT to the v2.0.0 subsystem tree path (see README "Full subsystem commands"), ` +
+        `or run in remote mode (CALLX402_MODE=remote, CALLX402_REMOTE_URL=<your callx402 server>).`,
       disposition: `${subsystem} unreachable: nothing executed.`,
       data: { error: handle.error },
     }),
@@ -67,7 +93,7 @@ async function actDiagnose(args, ctx) {
   const g = requireSubsystem('diagnose', 'doctor', ctx);
   if (!g.handle) return g;
   try {
-    const evidence = readEvidenceInput(args.evidence ?? args.target, require('fs'), require('path'));
+    const evidence = readDiagnoseInput(args, require('fs'), require('path'));
     const report = g.handle.module.runMcpDoctor(evidence);
     const whatFailed = report.whatFailed || 'unknown';
     return {
@@ -269,7 +295,7 @@ async function actStatus(args, ctx) {
     result: ok('status', {
       subsystem: null,
       disposition: `callx402 status: ${reachable}/${all.length} subsystems reachable, ${enabledCount}/${all.length} enabled.`,
-      data: { version: ctx.version || '0.1.0', v2Root: require('./subsystems').getV2Root(ctx.config || {}), subsystems },
+      data: { version: ctx.version || '1.0.0', v2Root: require('./subsystems').getV2Root(ctx.config || {}), subsystems },
     }),
     exitCode: EXIT.OK,
   };
@@ -314,7 +340,7 @@ async function actInspect(args, ctx) {
  */
 async function runAction(name, args = {}, opts = {}) {
   const config = opts.config || loadConfig();
-  const ctx = { deps: opts.deps || {}, config, timeoutMs: opts.timeoutMs, version: opts.version || '0.1.0' };
+  const ctx = { deps: opts.deps || {}, config, timeoutMs: opts.timeoutMs, version: opts.version || '1.0.0' };
 
   // SPEC §5: remote mode dispatches over HTTP to a callx402 server. The deps
   // seam is local-only: an explicit subsystem override means local dispatch.
@@ -334,6 +360,9 @@ async function runAction(name, args = {}, opts = {}) {
       case 'status': return actStatus(args, ctx);
       case 'preflight': return actPreflight(args, ctx);
       case 'inspect': return actInspect(args, ctx);
+      case 'evidence': return actEvidence(args, ctx);
+      case 'explain': return actExplain(args, ctx);
+      case 'recover': return actRecover(args, ctx);
       default:
         return {
           result: fail(name, {
