@@ -97,7 +97,19 @@ It returns the decision with its reasoning and a terminal assessment, ending wit
 
 What it deliberately refuses to do: it never charges, never executes, and never retries on your behalf. When the settlement state behind the operation is UNKNOWN, the recovery path refuses outright — an explicit retry after an unknown settlement could double-spend, so the pipeline demands manual settlement resolution first (the `resolve` action in the companion settlement article) and offers no bypass.
 
-Tested: yes. The veyline command suite covers RECOVERABLE and SAFE_RETRY decisions, the identity-from-evidence fallback, the unknown-identity refusal path, and the disabled-subsystem refusal (exit 3).
+For the narrowed question — "is THIS specific retry safe to sign?" — the paid one-off `safe_retry` rail action judges the concrete retry plan. It is rail-only (no CLI command; typing `callx402 safe_retry` prints a usage error pointing to `docs/problem-map.md`). Quote first (free), then pay deliberately:
+
+```sh
+curl "https://payload-rail.fly.dev/v1/callx402/quote?action=safe_retry&path=x402"
+# -> {"quote_id":"...","quoted_price_usd":"0.25", ...}
+curl -X POST https://payload-rail.fly.dev/v1/callx402/actions/safe_retry \
+  -H 'Content-Type: application/json' -d '{"retry_plan":"..."}'
+# -> HTTP 402 with exact USDC terms; pay from an authorized wallet, retry with {txHash, quote_id}
+```
+
+Its fail-closed rule: a retry that would double-pay is refused. Start with the free `recover` verdict above before spending. The sibling risk — a retry that would mint a second authorization for the same intent — is covered in the companion duplicate-payment article (`cx402-duppay-001-duplicate-payment-risk.md`).
+
+Tested: yes. The veyline command suite covers RECOVERABLE and SAFE_RETRY decisions, the identity-from-evidence fallback, the unknown-identity refusal path, and the disabled-subsystem refusal (exit 3). The paid `safe_retry` quote endpoint and 402 terms were verified live against the rail on 2026-10-07; the paid verdict itself was not executed (no payment made).
 
 Limitation: it reasons from recorded evidence only. If the operation was never recorded in the ledger, there is no basis for a verdict, and it says so instead of inventing one.
 
