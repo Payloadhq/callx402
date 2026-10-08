@@ -16,8 +16,7 @@
 const { test } = require('node:test');
 const path = require('node:path');
 const { runIntent, runAction } = require('../core/index.js');
-const { scratchDir, withEnv } = require('./helpers');
-
+const { scratchDir, withEnv, needsV2Tree } = require('./helpers');
 const scratch = scratchDir('pipeline');
 const hermetic = {
   CALLX402_CONFIG: path.join(scratch, 'config.json'),
@@ -169,7 +168,7 @@ test('networks/assets/providers constrain planner, router and spendguard', async
   });
 });
 
-test('real end-to-end run (no doubles, all flags off): honest no-route', async (t) => {
+test('real end-to-end run (no doubles, all flags off): honest no-route', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     const { result, exitCode } = await runIntent('summarize this for under 1 dollar', { maxBudget: 1 });
     t.assert.strictEqual(exitCode, 0);
