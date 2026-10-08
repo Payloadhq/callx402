@@ -15,8 +15,7 @@
 const { test } = require('node:test');
 const path = require('node:path');
 const { runIntent, runAction } = require('../core/index.js');
-const { scratchDir, cliEnv, runCLI, assertEnvelope, withEnv } = require('./helpers');
-
+const { scratchDir, cliEnv, runCLI, assertEnvelope, withEnv, needsV2Tree } = require('./helpers');
 const scratch = scratchDir('safety');
 const hermetic = {
   CALLX402_CONFIG: path.join(scratch, 'config.json'),
@@ -99,7 +98,7 @@ function walkPairs(o, prefix = '') {
   return out;
 }
 
-test('settlement UNKNOWN: exit 5, fail-closed, no retry/repay instruction', async (t) => {
+test('settlement UNKNOWN: exit 5, fail-closed, no retry/repay instruction', needsV2Tree, async (t) => {
   const r = await runCLI(
     ['resolve', '--evidence', '{}', '--json'],
     cliEnv(scratch, { PAYLOAD_SETTLEMENT_RESOLVER: '1' })
@@ -164,7 +163,7 @@ test('unsafe retry refusal: stored UNKNOWN + --force-retry -> refused, exit 5', 
   });
 });
 
-test('unsafe retry refusal via real CLI + file-backed store', async (t) => {
+test('unsafe retry refusal via real CLI + file-backed store', needsV2Tree, async (t) => {
   const idemFile = path.join(scratch, 'idem-unsafe.jsonl');
   const env = cliEnv(scratch, { CALLX402_IDEMPOTENCY_FILE: idemFile });
   const seeded = {
@@ -222,7 +221,7 @@ test('timeout: slow subsystem + tiny timeoutMs -> timeout error, exit 1, no hang
   });
 });
 
-test('timeout via CLI --timeout: monitor --watch is cut off -> exit 1', async (t) => {
+test('timeout via CLI --timeout: monitor --watch is cut off -> exit 1', needsV2Tree, async (t) => {
   // --watch streams forever; --timeout 200ms must win the race and exit 1.
   const r = await runCLI(
     ['monitor', '--watch', '--interval', '50', '--timeout', '200'],
