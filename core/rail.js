@@ -167,7 +167,7 @@ async function invokeRail(command, args, opts = {}) {
       return { ok: false, error: 'Signed authorization does not match the transaction, action, and current quote.' };
     }
     payBody = { ...payBody, txHash: String(args.txHash).toLowerCase(), payer_auth: auth };
-  } else {
+  }
   if (!payBody.credit_id && !payBody.payer_auth && !interactive) {
     return {
       ok: false,
