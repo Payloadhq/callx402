@@ -1,0 +1,20 @@
+name: callx402 Review Tests (no live payments)
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm test
+      - run: node --check core/rail.js
+      - run: node --check core/payer-auth.js
+      - run: node --check bin/callx402.js
