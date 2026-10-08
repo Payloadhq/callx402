@@ -10,6 +10,7 @@
  */
 
 const { test } = require('node:test');
+const { needsV2Tree } = require('./helpers');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -25,7 +26,7 @@ function walk(dir, out) {
   return out;
 }
 
-test('zero files changed under the v2.0.0 tree', (t) => {
+test('zero files changed under the v2.0.0 tree', needsV2Tree, (t) => {
   t.assert.ok(fs.existsSync(MARKER), 'integrity marker exists (created before the suite ran)');
   t.assert.ok(fs.existsSync(V2_ROOT), 'v2.0.0 tree exists');
   const markerMs = fs.statSync(MARKER).mtimeMs;
