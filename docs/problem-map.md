@@ -20,11 +20,12 @@ exact deterministic quote before anything is paid.
 
 **Two tiers.** Several actions exist in both a free local form and the paid
 rail form. The free form is read-only and never charges: the CLI command (or
-the matching `x402_*` MCP tool) runs against your own machine. The paid form
-runs on the production rail and follows the quote-then-pay shape above. The
-"Free path" column names the free equivalent; "rail only" means the action
-exists only as a paid rail action — typing it as a CLI command fails with a
-usage error that points here.
+the matching `x402_*` MCP tool) runs against your own machine (requires the
+v2.0.0 runtime tree and `CALLX402_LOCAL=1`). The paid form runs on the
+production rail: quote first, payment verified exactly once, then the
+diagnostic executes server-side and the result is returned — zero local setup.
+The "Free path" column names the free equivalent; "rail only" means the action
+exists only as a paid rail action.
 
 **Fees.** The table lists the Stripe-path fee per action. The x402 path
 quoted by the free quote endpoint is exactly that fee divided by 20
