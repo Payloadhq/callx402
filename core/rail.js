@@ -152,7 +152,7 @@ async function invokeRail(command, args, opts = {}) {
   }
 
   // 3. Payment: x402 (paste tx hash) or card (browser checkout -> credit ID).
-  let payBody = { evidence, quote_id: quoteId, quote };
+  let payBody = { evidence, quote_id: quoteId, quote: quote.quote_inputs || {} };
   if ((action === 'evidence' || action === 'explain') && args.operationId) {
     payBody.invocation_id = String(args.operationId);
   }
@@ -161,6 +161,7 @@ async function invokeRail(command, args, opts = {}) {
   if (args.creditId) {
     payBody = { ...payBody, credit_id: String(args.creditId) };
   } else if (args.txHash && args.payerAuth) {
+    if (!quote.quote_inputs) return { ok: false, error: 'Rail must return canonical quote_inputs before signed redemption.' };
     let auth;
     try { auth = readSignedAuthorization(String(args.payerAuth)); }
     catch (err) { return { ok: false, error: `Invalid payer authorization: ${err.message}` }; }
@@ -198,10 +199,11 @@ async function invokeRail(command, args, opts = {}) {
     if (!creditId) return { ok: false, error: 'No credit ID provided.' };
     payBody = { ...payBody, credit_id: creditId };
   } else {
+    if (!quote.quote_inputs) return { ok: false, error: 'Rail must return canonical quote_inputs before USDC payment.' };
     // x402 path: get exact payment terms from the 402, then user pays.
     const { status, body } = await railFetch(`/v1/callx402/actions/${action}`, {
       method: 'POST',
-      body: JSON.stringify({ evidence, quote_id: quoteId, quote }),
+      body: JSON.stringify({ evidence, quote_id: quoteId, quote: quote.quote_inputs }),
     });
     if (status !== 402) {
       return { ok: false, error: `Expected a 402 payment challenge, got HTTP ${status}.` };
