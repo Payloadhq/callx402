@@ -67,7 +67,7 @@ Shared notes for all actions:
 - **CAN IT MOVE MONEY?** No.
 - **CAN IT CREATE OR RETRY AN AUTHORIZATION?** No.
 - **FAIL-CLOSED CONDITIONS:** Missing `--goal` → exit 2; router disabled or unreachable → exit 3. With no candidates at all, the action is honest ("No candidate tools available... No route selected; nothing executed.") and still exits 0.
-- **EXAMPLE:** `callx402 route --goal "fetch 100 product prices for under $0.50" --speed cheap --json`
+- **EXAMPLE:** `callx402 route --goal 'fetch 100 product prices for under 0.50 USD' --speed cheap --json`
 - **CURRENT LIMITATIONS:** Without registered tools in the capability graph (experimental; requires `PAYLOAD_MCP_FABRIC=1`) there is nothing to rank, so routing returns an honest no-route result. Route selects; it never executes.
 - **VERIFICATION STATUS:** Tested. `test/cli-dispatch.test.js`: "route: disabled subsystem -> exit 3", "route: enabled, no candidates -> honest no-route, exit 0", "route: missing --goal -> usage error, exit 2", "router dispatch honors the fast speed policy", "router dispatch runs real selectTool/rankTools over candidates".
 
@@ -97,7 +97,7 @@ Shared notes for all actions:
 - **CAN IT MOVE MONEY?** It is the only action designed with execution side effects, and it is budget-gated, dry-run capable, and idempotent. In the current build it cannot move money: no live executable route is wired, so execution honestly does not happen. [implementation, tested]
 - **CAN IT CREATE OR RETRY AN AUTHORIZATION?** No in the current build. `--force-retry` after a stored run whose settlement is UNKNOWN is explicitly refused (`unsafe_retry_refused`, exit 5) to prevent double-spend.
 - **FAIL-CLOSED CONDITIONS:** Missing `--intent` → exit 2; over budget → exit 4, zero side effects; above approval threshold without `--approve` → exit 4; retry after UNKNOWN → exit 5; individual stages (intent engine, planner, router, kernel) disabled or unreachable are recorded in `data.stages` and planning continues honestly.
-- **EXAMPLE:** `callx402 execute --intent "complete this job for under $1" --max-budget 1.00 --dry-run --idempotency-key job-42 --json`
+- **EXAMPLE:** `callx402 execute --intent 'complete this job for under $1' --max-budget 1.00 --dry-run --idempotency-key job-42 --json`
 - **CURRENT LIMITATIONS:** No live executable route is wired in this build; `execute` currently plans honestly and stops. Effect proofs, settlement resolution, and receipts are only populated on real execution. Live execution would require a wired route plus an enabled execution kernel.
 - **VERIFICATION STATUS:** Tested. `test/intent-pipeline.test.js` (8 tests, incl. "execute: dry-run intent -> exit 0, honest no-route disposition", "cost above approval threshold without --approve fails closed, exit 4", "explicit --approve passes the threshold gate", "over-budget intent -> budget_refused, exit 4, zero side effects", "duplicate idempotencyKey: second call deduped with ORIGINAL result", "unsafe retry refusal", "intent pipeline walks stages in order", "networks/assets/providers constrain planner, router and spendguard"). `test/safety.test.js` (7 tests) covers the money-safety invariants end to end. Real CLI run verified 2026-10-06: intent-mode dispatch returns the honest "no executable route available" disposition with per-stage detail.
 
