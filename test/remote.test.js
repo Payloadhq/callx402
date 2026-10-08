@@ -14,8 +14,7 @@ const { test } = require('node:test');
 const path = require('node:path');
 const { runAction, runIntent } = require('../core/index.js');
 const { createServer } = require('../server/index.js');
-const { scratchDir, cliEnv, runCLI, assertEnvelope, withEnv } = require('./helpers');
-
+const { scratchDir, cliEnv, runCLI, assertEnvelope, withEnv, needsV2Tree } = require('./helpers');
 const scratch = scratchDir('remote');
 
 /** Start a real callx402 server on an ephemeral port. */
@@ -148,7 +147,7 @@ test('remote auth: server with token rejects missing/wrong bearer, accepts the r
   }
 });
 
-test('remote money-safety: settlement UNKNOWN envelope crosses the wire unchanged (exit 5)', async (t) => {
+test('remote money-safety: settlement UNKNOWN envelope crosses the wire unchanged (exit 5)', needsV2Tree, async (t) => {
   // The server runs in-process, so the subsystem flag belongs to the parent
   // env; the CLI subprocess only carries the remote-mode config.
   await withEnv({ PAYLOAD_SETTLEMENT_RESOLVER: '1' }, async () => {
