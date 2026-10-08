@@ -40,7 +40,10 @@ function cliEnv(scratch, extra = {}) {
     CALLX402_CONFIG: path.join(scratch, 'config.json'),
     CALLX402_IDEMPOTENCY_FILE: path.join(scratch, 'idempotency.jsonl'),
     // Hermetic default: local mode unless the test explicitly asks for remote.
+    // CALLX402_MODE=local is the legacy remote-server toggle; CALLX402_LOCAL=1
+    // forces the v2.0.0 runtime tree path (new default is the hosted rail).
     CALLX402_MODE: 'local',
+    CALLX402_LOCAL: '1',
     ...extra,
   };
 }
