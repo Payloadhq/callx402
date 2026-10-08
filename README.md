@@ -160,18 +160,21 @@ one action. Invoking a rail action is paid per action via checkout (machine
 front door: https://payloadhq.github.io/agents.json); nothing here pays
 anything.
 
-### 3. Full subsystem commands
+### 3. Self-hosted runtime (advanced, optional)
 
-`diagnose`, `rescue`, `route`, `resolve`, `doctor`, `monitor`, `preflight`,
-and `inspect` dispatch into the v2.0.0 subsystem tree (the Veyline Developer
-Primer, `x402-paid-api-starter-kit`), a separate checkout that is not an npm
-dependency. Without it these commands exit 3 with `subsystem_unreachable`
-and do nothing. If you have the tree, point at it:
+By default every subsystem command routes to the hosted rail — no setup needed.
+If you prefer to run everything on your own machine, set `CALLX402_LOCAL=1`
+and point `CALLX402_V2_ROOT` at the v2.0.0 tree (the x402 Paid API Starter Kit,
+a separate product):
 
 ```sh
+export CALLX402_LOCAL=1
 export CALLX402_V2_ROOT=/path/to/x402-paid-api-starter-kit/v2.0.0
 callx402 status    # now: 15/15 reachable, 0/15 enabled
 ```
+
+Without `CALLX402_LOCAL=1`, these commands use the hosted rail instead —
+that is the standard path and needs nothing installed beyond the npm package.
 
 (The default is a `x402-paid-api-starter-kit/v2.0.0` directory sitting next
 to your callx402 checkout.)
@@ -260,9 +263,9 @@ Full HTTP surface: `server/openapi.yaml` (served live at `GET /openapi.json`).
 | `callx402 monitor [--once\|--watch]` | Watch subsystem/incident state |
 | `callx402 preflight` | Preflight checks before a paid run |
 | `callx402 inspect [--query <text>]` | Inspect capability graph / state |
-| `callx402 evidence <operationId> [--dir <path>]` | Show recorded evidence for an operation (read-only) |
-| `callx402 explain <operationId> [--dir <path>]` | Plain-language state assessment for an operation (read-only) |
-| `callx402 recover <operationId> [--identity <id> \| --evidence <json>]` | Safe recovery decision: RECOVERABLE / SAFE_RETRY / HUMAN_REVIEW (read-only) |
+| `callx402 evidence <operationId> [--dir <path>]` | Show recorded evidence for an operation (read-only) — MCP/rail only in 1.0.1, not a published CLI command |
+| `callx402 explain <operationId> [--dir <path>]` | Plain-language state assessment for an operation (read-only) — MCP/rail only in 1.0.1, not a published CLI command |
+| `callx402 recover <operationId> [--identity <id> \| --evidence <json>]` | Safe recovery decision: RECOVERABLE / SAFE_RETRY / HUMAN_REVIEW (read-only) — MCP/rail only in 1.0.1, not a published CLI command |
 | `callx402 config list \| get <k> \| set <k> <v>` | Manage local config |
 
 Subsystem commands (`diagnose`, `rescue`, `route`, `resolve`, `doctor`,
@@ -270,14 +273,33 @@ Subsystem commands (`diagnose`, `rescue`, `route`, `resolve`, `doctor`,
 feature flag (see "Full subsystem commands" above); without them they exit 3
 and do nothing. `status`, intent mode, and `config` work with zero setup.
 
+## Execution modes
+
+callx402 works out of the box. There are two modes:
+
+| Mode | What it is | Cost | Setup | What you get |
+|---|---|---|---|---|
+| **callx402 CLI — Hosted** (default) | The npm package as a lightweight client to the hosted Payload Rail | Free quote, then pay per action (e.g. `diagnose` $0.10, `resolve` $0.25 on the x402 path) | `npm install callx402` — zero setup | `diagnose`, `resolve`, `recover`, `preflight`, `evidence`, `explain` and more, executed server-side: free quote first, payment verified exactly once on-chain, invocation metered and auditable, result returned. |
+| **callx402 Runtime — Self-hosted** (advanced) | CLI + the v2.0.0 runtime tree (`CALLX402_LOCAL=1`, `CALLX402_V2_ROOT` set) | Free | Point `CALLX402_V2_ROOT` at the x402 Paid API Starter Kit v2.0.0 tree + enable feature flags | Full local execution on your machine against evidence you supply. Read-only analysis; never signs, never retries, never moves money. |
+
+A bare `npm install callx402` gives you the hosted mode — no separate tree,
+no config, no keys. The v2 tree is never required for standard use.
+
 ## Paid one-off diagnostics (no subscription)
 
 The CLI and MCP tools above are the **free local tier**: read-only
 diagnostics that never charge, never execute, and never move money. When a
-free diagnostic is not enough — you need the production rail to resolve a
-settlement, judge a specific retry plan, or triage an incident end to end —
-each action is also available as a **paid one-off rail action**. No
-subscription, no account: quote, then pay deliberately.
+free diagnostic is not enough — you need a paid, metered, auditable invocation
+with quote-before-payment and exactly-once payment semantics — each action is
+also available as a **paid one-off rail action**. No subscription, no account:
+quote, then pay deliberately.
+
+What paying buys: the rail authorizes the action, validates the payment
+exactly once on-chain, meters the invocation against your org, records it for
+audit, enforces governor/quota rules for subscribers — and then **executes the
+read-only diagnostic server-side and returns the result**. No local setup, no
+separate tree, no keys. The rail never fakes execution: every result is
+produced by the diagnostic modules over the evidence you supply.
 
 The quote-before-payment flow, verified live:
 
