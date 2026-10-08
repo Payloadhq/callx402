@@ -33,6 +33,14 @@ function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'callx402-veyline-'));
 }
 
+// Local-mode gate: the veyline tree is the optional advanced self-hosted
+// runtime, not a requirement. On a clean machine (no tree) the tree-dependent
+// tests skip — the CLI routes to the hosted rail by default instead.
+const VEYLINE_ROOT = path.resolve(__dirname, '..', '..', 'veyline', 'engineering', 'recovery');
+let treeAvailable = false;
+try { require(path.join(VEYLINE_ROOT, 'operation-ledger.js')); treeAvailable = true; } catch { treeAvailable = false; }
+const needsTree = { skip: !treeAvailable };
+
 function seedLedger(dir) {
   // Seed through the real veyline modules so recover() can hit the cache.
   const root = path.resolve(__dirname, '..', '..', 'veyline', 'engineering', 'recovery');
@@ -59,7 +67,7 @@ test('ACTIONS includes the three new commands and no existing command was remove
   }
 });
 
-test('evidence: reports recorded events for a known operation', async () => {
+test('evidence: reports recorded events for a known operation', needsTree, async () => {
   envOn();
   const dir = tmpDir();
   try {
@@ -74,7 +82,7 @@ test('evidence: reports recorded events for a known operation', async () => {
   } finally { envOff(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('evidence: unknown operation is honest no_basis, still exit 0', async () => {
+test('evidence: unknown operation is honest no_basis, still exit 0', needsTree, async () => {
   envOn();
   const dir = tmpDir();
   try {
@@ -85,7 +93,7 @@ test('evidence: unknown operation is honest no_basis, still exit 0', async () =>
   } finally { envOff(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('evidence: disabled flag -> exit 3, nothing executed', async () => {
+test('evidence: disabled flag -> exit 3, nothing executed', needsTree, async () => {
   envOff();
   const { result, exitCode } = await runAction('evidence', { operationId: 'x', dir: tmpDir() }, {});
   assert.equal(exitCode, 3);
@@ -93,7 +101,7 @@ test('evidence: disabled flag -> exit 3, nothing executed', async () => {
   assert.equal(result.error.code, 'subsystem_disabled');
 });
 
-test('explain: plain-language assessment of an operation', async () => {
+test('explain: plain-language assessment of an operation', needsTree, async () => {
   envOn();
   const dir = tmpDir();
   try {
@@ -106,7 +114,7 @@ test('explain: plain-language assessment of an operation', async () => {
   } finally { envOff(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('explain: missing operationId -> usage error', async () => {
+test('explain: missing operationId -> usage error', needsTree, async () => {
   envOn();
   try {
     const { result, exitCode } = await runAction('explain', {}, {});
@@ -115,7 +123,7 @@ test('explain: missing operationId -> usage error', async () => {
   } finally { envOff(); }
 });
 
-test('recover: RECOVERABLE decision returned read-only with the prior result', async () => {
+test('recover: RECOVERABLE decision returned read-only with the prior result', needsTree, async () => {
   envOn();
   const dir = tmpDir();
   try {
@@ -132,7 +140,7 @@ test('recover: RECOVERABLE decision returned read-only with the prior result', a
   } finally { envOff(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('recover: builds the identity from evidence fields when --identity is absent', async () => {
+test('recover: builds the identity from evidence fields when --identity is absent', needsTree, async () => {
   envOn();
   const dir = tmpDir();
   try {
@@ -146,7 +154,7 @@ test('recover: builds the identity from evidence fields when --identity is absen
   } finally { envOff(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('recover: unknown identity with no evidence -> SETTLEMENT_UNKNOWN, never a repay', async () => {
+test('recover: unknown identity with no evidence -> SETTLEMENT_UNKNOWN, never a repay', needsTree, async () => {
   envOn();
   const dir = tmpDir();
   try {
@@ -161,7 +169,7 @@ test('recover: unknown identity with no evidence -> SETTLEMENT_UNKNOWN, never a 
   } finally { envOff(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('recover: missing identity and insufficient evidence fields -> usage error', async () => {
+test('recover: missing identity and insufficient evidence fields -> usage error', needsTree, async () => {
   envOn();
   try {
     const { result, exitCode } = await runAction('recover', { operationId: 'op_cli1', dir: tmpDir() }, {});
@@ -170,7 +178,7 @@ test('recover: missing identity and insufficient evidence fields -> usage error'
   } finally { envOff(); }
 });
 
-test('recover: disabled flag -> exit 3', async () => {
+test('recover: disabled flag -> exit 3', needsTree, async () => {
   envOff();
   const { result, exitCode } = await runAction('recover', { operationId: 'x', identity: 'y' }, {});
   assert.equal(exitCode, 3);
