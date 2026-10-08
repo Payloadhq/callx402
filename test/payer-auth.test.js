@@ -73,7 +73,7 @@ test('stale signature for a different quote fails without submitting a payment p
   const requests = [];
   global.fetch = async (url, init = {}) => {
     requests.push({ url, init });
-    return { status: 200, text: async () => JSON.stringify({ quoted_price_usd: '0.25', quote_id: 'q_changed' }) };
+    return { status: 200, text: async () => JSON.stringify({ quoted_price_usd: '0.25', quote_id: 'q_changed', quote_inputs: { action: 'resolve', path: 'x402' } }) };
   };
   try {
     const result = await invokeRail('resolve', {
