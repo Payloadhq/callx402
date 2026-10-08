@@ -10,6 +10,7 @@ const recipient = '0x' + '33'.repeat(20);
 const signature = '0x' + '44'.repeat(65);
 const authorization = () => ({
   wallet, action: 'resolve', txHash, quote_id: 'q_test',
+  quote_inputs: { action: 'resolve', path: 'x402', issuedAt: 1 }, quoted_price_usd: '0.25',
   request_hash: actionRequestHash('resolve', { evidence: '{}' }),
   network: 'eip155:8453', recipient, nonce: 'nonce_unique_1234',
   expiry: Math.floor(Date.now() / 1000) + 300, signature,
@@ -58,8 +59,9 @@ test('signed noninteractive redemption sends signature, never wallet secrets', a
       evidence: '{}', txHash, payerAuth: JSON.stringify(authorization()),
     }, { yes: true, json: true });
     assert.equal(result.ok, true);
-    assert.equal(requests.length, 2);
-    const body = JSON.parse(requests[1].init.body);
+    assert.equal(requests.length, 1);
+    const body = JSON.parse(requests[0].init.body);
+    assert.deepEqual(body.quote, authorization().quote_inputs);
     assert.equal(body.txHash, txHash);
     assert.equal(body.payer_auth.wallet, wallet);
     assert.equal(body.payer_auth.signature, signature);
@@ -79,11 +81,11 @@ test('stale signature for a different quote fails without submitting a payment p
   };
   try {
     const result = await invokeRail('resolve', {
-      txHash, payerAuth: JSON.stringify(authorization()),
+      txHash, payerAuth: JSON.stringify({ ...authorization(), action: 'recover' }),
     }, { yes: true, json: true });
     assert.equal(result.ok, false);
     assert.match(result.error, /current quote/);
-    assert.equal(requests.length, 1);
+    assert.equal(requests.length, 0);
   } finally {
     global.fetch = previous;
   }
