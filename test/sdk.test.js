@@ -13,8 +13,7 @@
 const { test } = require('node:test');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
-const { ENVELOPE_KEYS, scratchDir, withEnv } = require('./helpers');
-
+const { ENVELOPE_KEYS, scratchDir, withEnv, needsV2Tree } = require('./helpers');
 const scratch = scratchDir('sdk');
 const hermetic = {
   CALLX402_CONFIG: path.join(scratch, 'config.json'),
@@ -45,7 +44,7 @@ test('JS SDK: callx402({intent}) returns a full envelope (in-process)', async (t
   });
 });
 
-test('JS SDK: version, status(), and sub-actions', async (t) => {
+test('JS SDK: version, status(), and sub-actions', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     t.assert.strictEqual(sdk.version, '1.0.0');
     t.assert.strictEqual(require('../sdk/js/index.js').callx402.version, '1.0.0');
@@ -74,7 +73,7 @@ test('JS SDK: invalid opts throw TypeError (fail fast, no dispatch)', async (t) 
   });
 });
 
-test('JS SDK: action dispatch through runAction', async (t) => {
+test('JS SDK: action dispatch through runAction', needsV2Tree, async (t) => {
   await withEnv(hermetic, async () => {
     const r = await sdk({ action: 'resolve', args: { evidence: '{}' } });
     // Settlement subsystem disabled without its flag: honest failure.
