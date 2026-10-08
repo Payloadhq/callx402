@@ -17,6 +17,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const core = require(path.join(ROOT, 'core'));
+const rail = require(path.join(ROOT, 'core', 'rail'));
 const { loadConfig, getConfig, setConfig, listConfig } = require(path.join(ROOT, 'core', 'config'));
 const { EXIT } = require(path.join(ROOT, 'core', 'envelope'));
 
@@ -246,15 +247,16 @@ Exit codes: 0 ok · 2 usage (unknown key or subcommand).
 };
 
 const HELP = `callx402 ${VERSION} — universal action layer for x402 infrastructure.
-callx402 is the ACTION, not the product name; every command dispatches into
-the existing v2.0.0 subsystems. Nothing here executes payments by itself.
+Install it and it works: subsystem commands route to the hosted Payload Rail
+by default (free quote first, then pay-per-action). Nothing here executes
+payments by itself.
 
 Usage:
   callx402 <command> [args] [options]
   callx402 "natural language intent"        intent mode (plans, never executes blindly)
   callx402 --help | --version
 
-Commands:
+Commands (hosted by default — zero setup):
   diagnose    run the x402 doctor over supplied evidence        [--target <url|json>] [--evidence <json|@file>]
   rescue      incident triage (auth-gated; read-only without auth) --incident <id>
   route       select a tool/route for a goal                   --goal <text>
@@ -268,12 +270,12 @@ Commands:
   evidence    show recorded evidence for an operation          <operationId> [--dir <path>]
   explain     explain an operation's state in plain language   <operationId> [--dir <path>]
   recover     report the safe recovery decision (read-only)    <operationId> [--identity <id> | --evidence <json>]
-  config      list | get <key> | set <key> <value>
+  config      list | get <key> | set <key> <v>
 
 Options:
   --json                 print the full result envelope as JSON
   --timeout <ms>         fail the action if it exceeds <ms>
-  --approve              authorize costs above the approval threshold
+  --approve              approve the quoted price non-interactively
   --force-retry          explicit retry flag (REFUSED when prior settlement is UNKNOWN)
   --dry-run              plan only; no execution side effects
   --speed fast|balanced|cheap   routing policy hint
@@ -285,11 +287,14 @@ Options:
 Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
 4 budget refused · 5 settlement unknown (never auto-retry, never repay).
 
-First run (no setup):  callx402 status        honest subsystem reachability report
+First run (no setup):  callx402 diagnose --evidence '{"txHash":"0x..."}'
+                        free quote first, then pay-per-action on the hosted rail.
+                        callx402 status        honest subsystem reachability report
                         callx402 'plain words'  plans only; nothing executes, no money moves
-Subsystem commands (diagnose, rescue, route, resolve, doctor, monitor,
-preflight, inspect) need the v2.0.0 tree: set CALLX402_V2_ROOT to its path
-and enable each subsystem's flag (run 'callx402 status' to see flag names).
+Execution modes: hosted rail by default. Set CALLX402_LOCAL=1 to prefer the
+local v2.0.0 runtime tree instead (advanced self-hosted mode): set
+CALLX402_V2_ROOT to its path and enable each subsystem's flag
+(run 'callx402 status' to see flag names).
 `;
 
 function parseArgv(argv) {
@@ -493,6 +498,30 @@ async function main() {
   if (args.approvalThreshold !== undefined && Number.isNaN(args.approvalThreshold)) usageError('--approval-threshold must be a number');
 
   try {
+    // Hosted rail routing (default): subsystem commands run against the live
+    // Payload Rail with zero local setup — invoke -> free quote ->
+    // payment/authorization -> result. Set CALLX402_LOCAL=1 to prefer the
+    // local v2.0.0 runtime tree instead (advanced self-hosted mode).
+    if (rail.isRailCommand(actionName) && !rail.preferLocal()) {
+      const railResult = await rail.invokeRail(actionName, args, { yes: args.approve, json: args.json });
+      if (args.json) {
+        console.log(JSON.stringify(railResult, null, 2));
+      } else if (railResult.ok) {
+        console.log(`\nResult (via ${railResult.via}, invocation ${railResult.invocation_id}):`);
+        const ex = railResult.execution;
+        if (ex && ex.executed) {
+          if (ex.disposition) console.log(ex.disposition);
+          if (ex.result !== undefined) console.log(JSON.stringify(ex.result, null, 2));
+        } else if (ex && ex.error) {
+          console.log(`Note: ${ex.error}`);
+        }
+        if (railResult.notice) console.log(railResult.notice);
+      } else {
+        console.error(`callx402: ${railResult.error}`);
+        if (railResult.quote) console.error(`Quote was: $${railResult.quote.price_usd} (${railResult.quote.quote_id})`);
+      }
+      process.exit(railResult.ok ? EXIT.OK : EXIT.FAIL);
+    }
     const { result, exitCode } = await core.runAction(actionName, args, { version: VERSION });
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
