@@ -4,8 +4,8 @@
 action and entry-point layer for x402 infrastructure: you state an intent in
 plain language (or call an HTTP endpoint), and callx402 dispatches into the
 existing x402 subsystems that do the real work. It dispatches only. It never
-moves money by itself. The flagship product keeps a separate, forthcoming
-brand; callx402 is how you access it.
+moves money by itself. The flagship product is Veyline; callx402 is how you
+access it. **Positioning: callx402 is the action layer of Veyline.**
 
 Status of this docs set: landing index is live. Pages and assets marked
 "planned" below are not published yet. Nothing here is aspirational: every
@@ -46,18 +46,20 @@ Check subsystem reachability and feature flags:
 callx402 status
 ```
 
-Run an intent in plain language:
+Run an intent in plain language (single quotes: in double quotes your shell
+would expand `$1` to nothing):
 
 ```sh
-callx402 "complete this job for under $1"
+callx402 'complete this job for under $1'
 ```
 
-Diagnose, rescue, route, resolve:
+Diagnose, rescue, route, resolve (need the v2.0.0 tree plus each
+subsystem's flag; see the main README, "Full subsystem commands"):
 
 ```sh
-callx402 diagnose --target "https://api.example.com/x402/pay"
+callx402 diagnose --target 'https://api.example.com/x402/pay'
 callx402 rescue --incident inc_123
-callx402 route --goal "fetch 100 product prices for under $0.50"
+callx402 route --goal 'fetch 100 product prices for under 0.50 USD'
 callx402 resolve --evidence '{"txHash":"0xabc..."}'
 ```
 
@@ -123,7 +125,7 @@ Planned. No recipes published yet.
 The subsystem tree callx402 dispatches into: Sentinel, Rescue, Doctor,
 Router, Valuator, SpendGuard, Settlement Resolver, Intent Engine, Capability
 Graph, Economic Planner, MCP fabric, and RevRule. Every dispatch goes
-through the real subsystem in the x402 paid API starter kit v2.0.0 tree,
+through the real subsystem in the Veyline Developer Primer v2.0.0 tree (x402-paid-api-starter-kit),
 which callx402 imports but never modifies. If a subsystem is disabled or
 unreachable, callx402 reports that plainly and fails closed. It never fakes
 success.
@@ -288,7 +290,7 @@ guards real money movement is ever force-enabled by callx402.
 
 ### Subsystem docs
 
-callx402 dispatches into the x402 paid API starter kit v2.0.0 tree. Its docs
+callx402 dispatches into the Veyline Developer Primer v2.0.0 tree (x402-paid-api-starter-kit). Its docs
 are the reference for subsystem behavior:
 
 - `../x402-paid-api-starter-kit/v2.0.0/README.md` — kit overview
