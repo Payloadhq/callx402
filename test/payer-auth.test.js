@@ -47,7 +47,7 @@ test('signed noninteractive redemption sends signature, never wallet secrets', a
   global.fetch = async (url, init = {}) => {
     requests.push({ url, init });
     const quote = String(url).includes('/quote?');
-    const body = quote ? { quoted_price_usd: '0.25', quote_id: 'q_test' } :
+    const body = quote ? { quoted_price_usd: '0.25', quote_id: 'q_test', quote_inputs: { action: 'resolve', path: 'x402' } } :
       { ok: true, invocation_id: 'invo_mock', via: 'x402', execution: { executed: true, result: { state: 'UNKNOWN' } } };
     return { status: 200, text: async () => JSON.stringify(body) };
   };
