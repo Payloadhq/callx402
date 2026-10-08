@@ -20,6 +20,11 @@ Only diagnostic, read-only actions are exposed. Nothing here charges, executes,
 retries, or repays. If a subsystem is unreachable, the tool fails closed
 instead of inventing an answer.
 
+Setup note: `x402_status` works with zero setup. The other five tools
+dispatch into the v2.0.0 subsystem tree, so they report
+`subsystem_unreachable` until `CALLX402_V2_ROOT` points at the tree and the
+matching flag is enabled (see the main README, "Full subsystem commands").
+
 Tool names are namespaced `x402_*` — never `call_x402` (live collision on the
 fiatdock marketplace).
 
