@@ -25,9 +25,3 @@ jobs:
 
       - name: Publish to npm via Trusted Publishing (OIDC, no token)
         run: npm publish --provenance --access public
-
-      - run: npm install
-      - run: npm test
-
-      - name: Publish to npm via Trusted Publishing (OIDC, no token)
-        run: npm publish --provenance --access public
