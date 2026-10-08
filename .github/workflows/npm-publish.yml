@@ -15,14 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: npm install -g npm@latest
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-
-      - run: npm install
+      - run: npm install -g npm@latest
+      - run: npm ci --no-audit --no-fund
       - run: npm test
+      - run: npm pack --dry-run
 
 
       - name: Publish to npm via Trusted Publishing (OIDC, no token)
