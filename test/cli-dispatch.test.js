@@ -8,15 +8,14 @@
  */
 
 const { test } = require('node:test');
-const { scratchDir, cliEnv, runCLI, assertEnvelope } = require('./helpers');
-
+const { scratchDir, cliEnv, runCLI, assertEnvelope, needsV2Tree } = require('./helpers');
 const scratch = scratchDir('cli');
 
 function env(extra) {
   return cliEnv(scratch, extra);
 }
 
-test('diagnose: disabled subsystem -> exit 3, honest disabled envelope', async (t) => {
+test('diagnose: disabled subsystem -> exit 3, honest disabled envelope', needsV2Tree, async (t) => {
   const r = await runCLI(['diagnose', '--json'], env());
   t.assert.strictEqual(r.code, 3);
   assertEnvelope(t, r.json, 'diagnose');
@@ -27,7 +26,7 @@ test('diagnose: disabled subsystem -> exit 3, honest disabled envelope', async (
   t.assert.match(r.json.error.message, /PAYLOAD_MCP_DOCTOR=1/);
 });
 
-test('diagnose: enabled -> exit 0, real doctor report with stages', async (t) => {
+test('diagnose: enabled -> exit 0, real doctor report with stages', needsV2Tree, async (t) => {
   const r = await runCLI(['diagnose', '--json'], env({ PAYLOAD_MCP_DOCTOR: '1' }));
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'diagnose');
@@ -38,13 +37,13 @@ test('diagnose: enabled -> exit 0, real doctor report with stages', async (t) =>
   t.assert.strictEqual(typeof r.json.data.report.whatFailed, 'string');
 });
 
-test('doctor: alias of diagnose -> envelope action is diagnose', async (t) => {
+test('doctor: alias of diagnose -> envelope action is diagnose', needsV2Tree, async (t) => {
   const r = await runCLI(['doctor', '--json'], env({ PAYLOAD_MCP_DOCTOR: '1' }));
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'diagnose');
 });
 
-test('rescue: enabled but no auth -> auth_required, exit 3, nothing executed', async (t) => {
+test('rescue: enabled but no auth -> auth_required, exit 3, nothing executed', needsV2Tree, async (t) => {
   const r = await runCLI(['rescue', '--incident', 'inc-1', '--json'], env({ PAYLOAD_RESCUE: '1' }));
   t.assert.strictEqual(r.code, 3);
   assertEnvelope(t, r.json, 'rescue');
@@ -54,7 +53,7 @@ test('rescue: enabled but no auth -> auth_required, exit 3, nothing executed', a
   t.assert.match(r.json.disposition, /no authorization/i);
 });
 
-test('rescue: with --auth -> real rescue triage, read-only, exit 0', async (t) => {
+test('rescue: with --auth -> real rescue triage, read-only, exit 0', needsV2Tree, async (t) => {
   const r = await runCLI(['rescue', '--incident', 'inc-1', '--auth', '--json'], env({ PAYLOAD_RESCUE: '1' }));
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'rescue');
@@ -62,14 +61,14 @@ test('rescue: with --auth -> real rescue triage, read-only, exit 0', async (t) =
   t.assert.match(r.json.disposition, /read-only/i);
 });
 
-test('route: disabled subsystem -> exit 3', async (t) => {
+test('route: disabled subsystem -> exit 3', needsV2Tree, async (t) => {
   const r = await runCLI(['route', '--goal', 'pick a tool', '--json'], env());
   t.assert.strictEqual(r.code, 3);
   assertEnvelope(t, r.json, 'route');
   t.assert.strictEqual(r.json.error.code, 'subsystem_disabled');
 });
 
-test('route: enabled, no candidates -> honest no-route, exit 0', async (t) => {
+test('route: enabled, no candidates -> honest no-route, exit 0', needsV2Tree, async (t) => {
   const r = await runCLI(['route', '--goal', 'pick a tool', '--json'], env({ PAYLOAD_MCP_ROUTES: '1' }));
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'route');
@@ -78,14 +77,14 @@ test('route: enabled, no candidates -> honest no-route, exit 0', async (t) => {
   t.assert.strictEqual(r.json.data.candidates, 0);
 });
 
-test('route: missing --goal -> usage error, exit 2', async (t) => {
+test('route: missing --goal -> usage error, exit 2', needsV2Tree, async (t) => {
   const r = await runCLI(['route', '--json'], env({ PAYLOAD_MCP_ROUTES: '1' }));
   t.assert.strictEqual(r.code, 2);
   assertEnvelope(t, r.json, 'route');
   t.assert.strictEqual(r.json.error.code, 'usage');
 });
 
-test('resolve: empty evidence -> settlement UNKNOWN, exit 5', async (t) => {
+test('resolve: empty evidence -> settlement UNKNOWN, exit 5', needsV2Tree, async (t) => {
   const r = await runCLI(['resolve', '--evidence', '{}', '--json'], env({ PAYLOAD_SETTLEMENT_RESOLVER: '1' }));
   t.assert.strictEqual(r.code, 5);
   assertEnvelope(t, r.json, 'resolve');
@@ -94,7 +93,7 @@ test('resolve: empty evidence -> settlement UNKNOWN, exit 5', async (t) => {
   t.assert.strictEqual(r.json.error.code, 'settlement_unknown');
 });
 
-test('resolve: disabled subsystem -> exit 3', async (t) => {
+test('resolve: disabled subsystem -> exit 3', needsV2Tree, async (t) => {
   const r = await runCLI(['resolve', '--evidence', '{}', '--json'], env());
   t.assert.strictEqual(r.code, 3);
   assertEnvelope(t, r.json, 'resolve');
@@ -123,14 +122,14 @@ test('intent mode: bare quoted string dispatches execute', async (t) => {
   assertEnvelope(t, r.json, 'execute');
 });
 
-test('monitor: disabled sentinel -> exit 3', async (t) => {
+test('monitor: disabled sentinel -> exit 3', needsV2Tree, async (t) => {
   const r = await runCLI(['monitor', '--once', '--json'], env());
   t.assert.strictEqual(r.code, 3);
   assertEnvelope(t, r.json, 'monitor');
   t.assert.strictEqual(r.json.error.code, 'subsystem_disabled');
 });
 
-test('monitor: inert sentinel snapshot -> exit 0', async (t) => {
+test('monitor: inert sentinel snapshot -> exit 0', needsV2Tree, async (t) => {
   const r = await runCLI(['monitor', '--once', '--json'], env({ PAYLOAD_SENTINEL: '1' }));
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'monitor');
@@ -138,7 +137,7 @@ test('monitor: inert sentinel snapshot -> exit 0', async (t) => {
   t.assert.ok(r.json.data.snapshot, 'snapshot present');
 });
 
-test('status: exit 0, all subsystems reported', async (t) => {
+test('status: exit 0, all subsystems reported', needsV2Tree, async (t) => {
   const r = await runCLI(['status', '--json'], env());
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'status');
@@ -151,7 +150,7 @@ test('status: exit 0, all subsystems reported', async (t) => {
   t.assert.strictEqual(subs.doctor.flag, 'PAYLOAD_MCP_DOCTOR');
 });
 
-test('preflight: disabled -> exit 3; enabled -> exit 0 with report', async (t) => {
+test('preflight: disabled -> exit 3; enabled -> exit 0 with report', needsV2Tree, async (t) => {
   const off = await runCLI(['preflight', '--json'], env());
   t.assert.strictEqual(off.code, 3);
   assertEnvelope(t, off.json, 'preflight');
@@ -163,7 +162,7 @@ test('preflight: disabled -> exit 3; enabled -> exit 0 with report', async (t) =
   t.assert.ok(on.json.data.report, 'preflight report present');
 });
 
-test('inspect: capability stats without query -> exit 0', async (t) => {
+test('inspect: capability stats without query -> exit 0', needsV2Tree, async (t) => {
   const r = await runCLI(['inspect', '--json'], env({ PAYLOAD_MCP_FABRIC: '1' }));
   t.assert.strictEqual(r.code, 0);
   assertEnvelope(t, r.json, 'inspect');
@@ -205,7 +204,7 @@ test('unknown command -> exit 2 and lists valid commands', async (t) => {
   }
 });
 
-test('malformed input: bad JSON evidence -> exit 2 with clear message', async (t) => {
+test('malformed input: bad JSON evidence -> exit 2 with clear message', needsV2Tree, async (t) => {
   const r = await runCLI(['resolve', '--evidence', '{not-json', '--json'], env({ PAYLOAD_SETTLEMENT_RESOLVER: '1' }));
   t.assert.strictEqual(r.code, 2);
   assertEnvelope(t, r.json, 'resolve');
