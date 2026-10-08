@@ -23,7 +23,227 @@ const { EXIT } = require(path.join(ROOT, 'core', 'envelope'));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VERSION = PKG.version || '1.0.0';
 
-const COMMANDS = ['diagnose', 'rescue', 'route', 'resolve', 'doctor', 'execute', 'monitor', 'status', 'preflight', 'inspect', 'config'];
+const COMMANDS = ['diagnose', 'rescue', 'route', 'resolve', 'doctor', 'execute', 'monitor', 'status', 'preflight', 'inspect', 'config', 'evidence', 'explain', 'recover'];
+
+// Paid on-demand rail actions that have no CLI command (architecture: the CLI
+// is the free local tier; these run on the paid rail via the quote-then-pay
+// invocation in docs/problem-map.md). Named here so a mistyped/rail-action
+// command gets a routing hint instead of a dead-end usage error.
+const RAIL_ONLY_ACTIONS = {
+  safe_retry: 'safe_retry', 'safe-retry': 'safe_retry',
+  duplicate_payment_risk: 'duplicate_payment_risk', 'duplicate-payment-risk': 'duplicate_payment_risk',
+  failure_classification: 'failure_classification', 'failure-classification': 'failure_classification',
+  settlement_interpretation: 'settlement_interpretation', 'settlement-interpretation': 'settlement_interpretation',
+};
+
+// Per-command help: `callx402 <command> --help` prints the command's own usage
+// instead of the global help. Free local tier; paid rail counterparts (where
+// they exist) are named with their docs pointer.
+const COMMAND_HELP = {
+  diagnose: `callx402 diagnose — run the x402 doctor over supplied evidence.
+
+Usage:
+  callx402 diagnose --target <url> [--evidence <json|@file>]
+  callx402 diagnose --evidence '{"txHash":"0x..."}'
+
+Read-only: classifies the failure stage from evidence you supply; performs no
+live probing and changes no state. Requires PAYLOAD_MCP_DOCTOR=1 (exit 3 names
+the flag when it is off).
+
+Paid one-off counterpart: the 'diagnose' rail action (quote first, then pay;
+see docs/problem-map.md). The MCP tool x402_diagnose covers the same free
+diagnostic.
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  rescue: `callx402 rescue — incident triage for stuck or failed x402 transactions.
+
+Usage:
+  callx402 rescue --incident <id> [--network <net>] [--auth]
+
+Read-only triage: detects the incident, quotes the rescue, presents the
+free-vs-paid offer. Paid execution is NEVER performed by this command.
+Without --auth (or CALLX402_AUTH_TOKEN / config rescueAuth) it refuses with
+exit 3. Requires PAYLOAD_RESCUE=1.
+
+Paid one-off counterpart: the 'rescue' rail action (see docs/problem-map.md).
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable or auth_required ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  route: `callx402 route — select a tool/route for a goal under a routing policy.
+
+Usage:
+  callx402 route --goal <text> [--speed fast|balanced|cheap]
+                 [--networks a,b] [--assets a,b]
+
+Selection only: nothing executed, no money moved. Requires PAYLOAD_MCP_ROUTES=1.
+
+Exit codes: 0 ok · 1 failure · 2 usage (missing --goal) · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  resolve: `callx402 resolve — resolve the settlement state of a payment from evidence.
+
+Usage:
+  callx402 resolve --evidence '{"txHash":"0x...","network":"base"}'
+  callx402 resolve --evidence @evidence.json
+
+Read-only analysis: maps evidence to DEFINITELY_PAID, DEFINITELY_NOT_PAID,
+AUTHORIZED_NOT_SETTLED, SETTLEMENT_PENDING, CONFLICT, or UNKNOWN. Never
+queries the chain, never signs, never retries, never repays. Requires
+PAYLOAD_SETTLEMENT_RESOLVER=1.
+
+Thin evidence -> settlement UNKNOWN, exit 5. That is the stop sign: do not
+retry, do not repay; gather fresh evidence or escalate.
+
+Paid one-off counterpart: the 'resolve' rail action (quote first, then pay;
+see docs/problem-map.md). The MCP tool x402_resolve covers the same free
+diagnostic.
+
+Exit codes: 0 ok · 1 failure · 2 usage (malformed evidence JSON) ·
+3 disabled/unreachable · 4 budget refused ·
+5 settlement unknown (never auto-retry, never repay).
+`,
+  doctor: `callx402 doctor — alias of diagnose.
+
+Usage:
+  callx402 doctor --target <url> [--evidence <json|@file>]
+
+Identical to diagnose (the envelope's action field reads "diagnose").
+Requires PAYLOAD_MCP_DOCTOR=1.
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  execute: `callx402 execute — run the intent pipeline under an explicit budget.
+
+Usage:
+  callx402 execute --intent <text> [--max-budget N] [--dry-run]
+                   [--idempotency-key K] [--approve] [--force-retry]
+
+Budget-gated and idempotent. --dry-run plans only. Over-budget plans refuse
+with exit 4 and zero side effects. --force-retry after a stored run whose
+settlement is UNKNOWN is refused (exit 5): it could double-spend.
+
+Exit codes: 0 ok · 1 failure · 2 usage (missing --intent) ·
+3 disabled/unreachable · 4 budget refused ·
+5 settlement unknown (never auto-retry, never repay).
+`,
+  monitor: `callx402 monitor — Sentinel snapshot of x402 incident state.
+
+Usage:
+  callx402 monitor --once            single snapshot (default)
+  callx402 monitor --watch [--interval <ms>]
+
+Read-only. The default sentinel is inert ("no live tracking") unless
+PAYLOAD_SENTINEL=1 enables the live tracker.
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  status: `callx402 status — per-subsystem reachability report.
+
+Usage:
+  callx402 status [--json]
+
+Requires nothing; works even when every subsystem is disabled. Reports
+reachable/enabled/version/flag for all 15 subsystem handles. Always exits 0
+on success.
+`,
+  preflight: `callx402 preflight — preflight checks over a supplied context.
+
+Usage:
+  callx402 preflight [--json]
+
+Read-only: validates setup before a paid run; provisions or repairs nothing.
+Requires PAYLOAD_MCP_PREFLIGHT=1.
+
+Paid one-off counterpart: the 'preflight' rail action (see docs/problem-map.md).
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  inspect: `callx402 inspect — capability-graph lookup or stats.
+
+Usage:
+  callx402 inspect [--query <text>]
+
+Lookups only. Requires PAYLOAD_MCP_FABRIC=1; without registered tools it
+returns zero candidates honestly.
+
+Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
+4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+`,
+  evidence: `callx402 evidence — show recorded evidence for an operation.
+
+Usage:
+  callx402 evidence <operationId> [--dir <path>]
+
+Reads the Veyline operation ledger: events, latest per-plane states (payment,
+execution, delivery), protocols. Unknown operations are honest ("no events
+recorded"), still exit 0. Requires PAYLOAD_VEYLINE_LEDGER=1. First step in any
+incident: returns what is recorded, nothing invented.
+
+Paid one-off counterpart: the 'evidence' rail action (quote first, then pay;
+see docs/problem-map.md). The MCP tool x402_evidence covers the same free
+diagnostic.
+
+Exit codes: 0 ok · 1 failure · 2 usage (missing operationId) ·
+3 disabled/unreachable · 4 budget refused ·
+5 settlement unknown (never auto-retry, never repay).
+`,
+  explain: `callx402 explain — explain an operation's state in plain language.
+
+Usage:
+  callx402 explain <operationId> [--dir <path>]
+
+Assessments from recorded ledger evidence: NO_BASIS, INCOMPLETE (do not retry,
+do not repay), KNOWN_SAFE, RECOVERY_CANDIDATE (run 'recover'), PARTIAL.
+Requires PAYLOAD_VEYLINE_LEDGER=1.
+
+Paid one-off counterpart: the 'explain' rail action (see docs/problem-map.md).
+The MCP tool x402_explain covers the same free diagnostic.
+
+Exit codes: 0 ok · 1 failure · 2 usage (missing operationId) ·
+3 disabled/unreachable · 4 budget refused ·
+5 settlement unknown (never auto-retry, never repay).
+`,
+  recover: `callx402 recover — report the safe recovery decision (read-only).
+
+Usage:
+  callx402 recover <operationId> [--identity <id> | --evidence <json>]
+
+Evaluates recorded history against the operation identity and returns the
+recovery decision: RECOVERABLE, SAFE_RETRY, EXECUTED_BUT_UNRECOVERABLE, or
+SETTLEMENT_UNKNOWN, mapped to KNOWN_SAFE or HUMAN_REVIEW. Never charges,
+never executes, never repays. Requires PAYLOAD_VEYLINE_RECOVERY=1.
+
+This is the read-only answer to "is a retry safe?" — a SAFE_RETRY verdict
+here is advisory; performing the safe action stays with your own adapters.
+For the paid one-off verdict on a specific retry plan, use the 'safe_retry'
+rail action (quote first, then pay; see docs/problem-map.md). The MCP tool
+x402_recover covers the same free diagnostic.
+
+Exit codes: 0 ok · 1 failure · 2 usage (missing identity/evidence) ·
+3 disabled/unreachable · 4 budget refused ·
+5 settlement unknown (never auto-retry, never repay).
+`,
+  config: `callx402 config — manage local configuration.
+
+Usage:
+  callx402 config list
+  callx402 config get <key>
+  callx402 config set <key> <value>
+
+Valid keys: mode, remoteUrl, authToken, v2Root, defaultNetwork, defaultAsset,
+defaultBudgetUsd, approvalThresholdUsd, rescueAuth. Values persist to
+~/.config/callx402/config.json (CALLX402_CONFIG overrides the path);
+CALLX402_* environment variables override file values at runtime.
+
+Exit codes: 0 ok · 2 usage (unknown key or subcommand).
+`,
+};
 
 const HELP = `callx402 ${VERSION} — universal action layer for x402 infrastructure.
 callx402 is the ACTION, not the product name; every command dispatches into
@@ -35,7 +255,7 @@ Usage:
   callx402 --help | --version
 
 Commands:
-  diagnose    run the x402 doctor over supplied evidence        [--target ...]
+  diagnose    run the x402 doctor over supplied evidence        [--target <url|json>] [--evidence <json|@file>]
   rescue      incident triage (auth-gated; read-only without auth) --incident <id>
   route       select a tool/route for a goal                   --goal <text>
   resolve     resolve settlement state from evidence           --evidence <json|@file>
@@ -45,6 +265,9 @@ Commands:
   status      per-subsystem reachable/enabled/version report
   preflight   run MCP preflight checks
   inspect     capability-graph lookup/stats                    [--query <text>]
+  evidence    show recorded evidence for an operation          <operationId> [--dir <path>]
+  explain     explain an operation's state in plain language   <operationId> [--dir <path>]
+  recover     report the safe recovery decision (read-only)    <operationId> [--identity <id> | --evidence <json>]
   config      list | get <key> | set <key> <value>
 
 Options:
@@ -61,6 +284,12 @@ Options:
 
 Exit codes: 0 ok · 1 failure · 2 usage · 3 disabled/unreachable ·
 4 budget refused · 5 settlement unknown (never auto-retry, never repay).
+
+First run (no setup):  callx402 status        honest subsystem reachability report
+                        callx402 'plain words'  plans only; nothing executes, no money moves
+Subsystem commands (diagnose, rescue, route, resolve, doctor, monitor,
+preflight, inspect) need the v2.0.0 tree: set CALLX402_V2_ROOT to its path
+and enable each subsystem's flag (run 'callx402 status' to see flag names).
 `;
 
 function parseArgv(argv) {
@@ -74,6 +303,7 @@ function parseArgv(argv) {
     'target', 'speed', 'interval', 'network', 'networks', 'asset', 'assets',
     'providers', 'deadline', 'risk',
     'dryRun', 'approve', 'forceRetry', 'retry', 'auth', 'watch', 'once',
+    'dir', 'operationId', 'identity',
   ]);
   let i = 0;
   while (i < argv.length) {
@@ -89,7 +319,7 @@ function parseArgv(argv) {
         i += 1;
         continue;
       }
-      const NEEDS_VALUE = new Set(['timeout', 'maxBudget', 'approvalThreshold', 'idempotencyKey', 'evidence', 'incident', 'goal', 'intent', 'query', 'target', 'speed', 'interval', 'network', 'networks', 'asset', 'assets', 'providers', 'deadline', 'risk']);
+      const NEEDS_VALUE = new Set(['timeout', 'maxBudget', 'approvalThreshold', 'idempotencyKey', 'evidence', 'incident', 'goal', 'intent', 'query', 'target', 'speed', 'interval', 'network', 'networks', 'asset', 'assets', 'providers', 'deadline', 'risk', 'dir', 'operationId', 'identity']);
       if (NEEDS_VALUE.has(name)) {
         if (val !== null) out.flags[name] = val;
         else if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) out.flags[name] = argv[++i];
@@ -111,8 +341,15 @@ function parseArgv(argv) {
   return out;
 }
 
-function usageError(message) {
-  console.error(`callx402: ${message}\nValid commands: ${COMMANDS.join(', ')}\nRun 'callx402 --help' for usage.`);
+function usageError(message, first) {
+  let msg = message;
+  // A rail-only paid action typed as a command is a routing hint, not a
+  // dead end: point at the quote-then-pay invocation instead.
+  if (first && RAIL_ONLY_ACTIONS[first] && /^unknown command /.test(message)) {
+    msg = `${message} — '${RAIL_ONLY_ACTIONS[first]}' is a paid on-demand rail action, not a CLI command. ` +
+      `Get the free quote, then pay deliberately: see docs/problem-map.md`;
+  }
+  console.error(`callx402: ${msg}\nValid commands: ${COMMANDS.join(', ')}\nRun 'callx402 --help' for usage, or 'callx402 <command> --help' for one command.`);
   process.exit(EXIT.USAGE);
 }
 
@@ -132,9 +369,16 @@ function summarize(envelope) {
 function statusSummary(envelope) {
   const lines = [envelope.disposition || 'status'];
   const subs = (envelope.data && envelope.data.subsystems) || {};
+  let reachable = 0;
   for (const [name, s] of Object.entries(subs)) {
+    if (s.reachable) reachable += 1;
     const mark = !s.reachable ? 'UNREACHABLE' : s.enabled ? 'enabled' : `disabled (${s.flag || 'no FLAG export'})`;
     lines.push(`  ${name.padEnd(12)} ${mark}${s.version ? `  v${s.version}` : ''}`);
+  }
+  if (reachable === 0 && Object.keys(subs).length > 0) {
+    lines.push('');
+    lines.push('  No subsystems reachable: subsystem commands need the v2.0.0 tree.');
+    lines.push('  Set CALLX402_V2_ROOT to its path (see README "Full subsystem commands").');
   }
   return lines.join('\n');
 }
@@ -142,7 +386,13 @@ function statusSummary(envelope) {
 async function main() {
   const { flags, positionals, errors } = parseArgv(process.argv.slice(2));
 
-  if (flags.help) { process.stdout.write(HELP); process.exit(EXIT.OK); }
+  // Per-command help: `callx402 <command> --help` prints that command's own
+  // usage. Bare `--help` (or --help with an unknown word) prints the global help.
+  if (flags.help) {
+    const cmd = positionals[0];
+    if (cmd && COMMAND_HELP[cmd]) { process.stdout.write(COMMAND_HELP[cmd]); process.exit(EXIT.OK); }
+    process.stdout.write(HELP); process.exit(EXIT.OK);
+  }
   if (flags.version) { process.stdout.write(`callx402 ${VERSION}\n`); process.exit(EXIT.OK); }
   if (errors.length > 0) usageError(errors[0]);
 
@@ -152,8 +402,8 @@ async function main() {
   // like natural language (more than one word). A single unknown word is an
   // unknown command (exit 2), per the CLI contract.
   const isCommand = first && COMMANDS.includes(first);
-  if (!isCommand && first && first.startsWith('-')) usageError(`unknown input '${first}'`);
-  if (!isCommand && positionals.length === 1 && !/\s/.test(first)) usageError(`unknown command '${first}'`);
+  if (!isCommand && first && first.startsWith('-')) usageError(`unknown input '${first}'`, first);
+  if (!isCommand && positionals.length === 1 && !/\s/.test(first)) usageError(`unknown command '${first}'`, first);
   const command = isCommand ? first : (first === undefined ? null : '__intent__');
 
   // config handled directly (not a subsystem dispatch)
@@ -214,6 +464,9 @@ async function main() {
     once: !!flags.once,
     interval: toNum(flags.interval),
     network: flags.network,
+    dir: flags.dir,
+    operationId: flags.operationId,
+    identity: flags.identity,
     deadline: flags.deadline,
     risk: flags.risk,
     networks: toList(flags.networks) || (flags.network ? [flags.network] : undefined),
@@ -232,6 +485,7 @@ async function main() {
     if (command === 'execute' && !args.intent && rest.length > 0) args.intent = rest.join(' ');
     if (command === 'inspect' && !args.query && rest.length > 0) args.query = rest.join(' ');
     if (command === 'rescue' && !args.incident && rest.length > 0) args.incident = rest[0];
+    if ((command === 'evidence' || command === 'explain' || command === 'recover') && !args.operationId && rest.length > 0) args.operationId = rest[0];
   }
 
   if (Number.isNaN(args.timeoutMs)) usageError('--timeout must be a number (ms)');
