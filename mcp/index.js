@@ -18,13 +18,21 @@
  * Only read-only / diagnostic actions are exposed. Actions with side effects
  * (execute, rescue mutations) are intentionally NOT tools here.
  *
+ * Honest surface: ONLY x402_status works on a bare install of this package.
+ * The other five tools dispatch into the v2.0.0 subsystem tree (the x402
+ * Paid API Starter Kit — a separate product that is NOT bundled here) and
+ * return `subsystem_unreachable` until CALLX402_V2_ROOT points at that tree
+ * and the matching feature flag is enabled. These tools never call the
+ * hosted rail; paid hosted equivalents live at
+ * https://payloadhq.github.io/agents.json.
+ *
  * Usage (Claude Desktop / MCP client config):
  *   { "command": "node", "args": ["/path/to/callx402/mcp/index.js"] }
  * Env: CALLX402_CONFIG, CALLX402_V2_ROOT, CALLX402_TIMEOUT_MS (default 30000).
  */
 const readline = require('node:readline');
 
-const VERSION = '1.0.2';
+const VERSION = '1.0.4';
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'callx402';
 const TIMEOUT_MS = Number(process.env.CALLX402_TIMEOUT_MS || 30000);
@@ -34,7 +42,29 @@ const core = require(process.env.CALLX402_CORE_PATH ||
 
 /* ------------------------------------------------------------------ */
 /* Tool definitions: name, description, input schema, core action.     */
+/*                                                                     */
+/* Requirement trailers, stated in every description because the       */
+/* description is what an MCP client actually shows the user:          */
+/*   TREE_REQUIRED — dispatches into the v2.0.0 subsystem tree, which  */
+/*     is NOT part of this package.                                    */
+/*   LEDGER_REQUIRED — reads the local Veyline operation ledger via    */
+/*     modules that are likewise not bundled here.                     */
 /* ------------------------------------------------------------------ */
+const TREE_REQUIRED =
+  ' Requires the v2.0.0 subsystem tree (x402 Paid API Starter Kit, a separate ' +
+  'product that is NOT included in this package): set CALLX402_V2_ROOT to the ' +
+  'tree and enable the subsystem flag, or this tool returns ' +
+  'subsystem_unreachable and does nothing. With the tree configured it is free ' +
+  'and read-only: no payment, no auth. A paid hosted equivalent runs on the ' +
+  'Payload rail — see https://payloadhq.github.io/agents.json.';
+const ledgerRequired = (flag) =>
+  ' Requires the local Veyline ledger modules (NOT included in this package; ' +
+  `enable with ${flag}=1 where the ledger lives) and reads ` +
+  'operations recorded on THIS machine — it cannot read back hosted rail ' +
+  'invocations. Until configured it returns subsystem_unreachable and does ' +
+  'nothing. When configured it is free and read-only: no payment, no auth.';
+const LEDGER_REQUIRED = ledgerRequired('PAYLOAD_VEYLINE_LEDGER');
+
 const TOOLS = [
   {
     name: 'x402_diagnose',
@@ -43,8 +73,8 @@ const TOOLS = [
       'Run the x402 doctor over supplied evidence. Use when something went ' +
       'wrong with an x402 payment or MCP/x402 interaction and you need a ' +
       'diagnosis. Input: evidence as a JSON string or object describing the ' +
-      'failure (error strings, responses, tx hashes). Read-only. ' +
-      ' Free read-only diagnostic surface: no payment, no auth, never Veyline-gated. For the paid on-demand callx402 action path, see https://payloadhq.github.io/agents.json.', 
+      'failure (error strings, responses, tx hashes). Read-only.' +
+      TREE_REQUIRED,
     inputSchema: {
       type: 'object',
       properties: {
@@ -66,8 +96,8 @@ const TOOLS = [
     description:
       'Show recorded ledger evidence for an operation: event trail, latest ' +
       'per-plane states (payment / execution / delivery), protocols involved. ' +
-      'Use FIRST in any incident — establishes ground truth before acting. Read-only. ' +
-      ' Free read-only diagnostic surface: no payment, no auth, never Veyline-gated. For the paid on-demand callx402 action path, see https://payloadhq.github.io/agents.json.', 
+      'Use FIRST in any incident — establishes ground truth before acting. Read-only.' +
+      LEDGER_REQUIRED,
     inputSchema: {
       type: 'object',
       properties: {
@@ -84,8 +114,8 @@ const TOOLS = [
       'Explain an operation\'s state in plain language from recorded evidence. ' +
       'Returns an assessment: NO_BASIS, INCOMPLETE (do not retry, do not repay), ' +
       'KNOWN_SAFE, RECOVERY_CANDIDATE, or PARTIAL. Use to understand an incident ' +
-      'before deciding whether to retry, refund, or escalate. Read-only. ' +
-      ' Free read-only diagnostic surface: no payment, no auth, never Veyline-gated. For the paid on-demand callx402 action path, see https://payloadhq.github.io/agents.json.', 
+      'before deciding whether to retry, refund, or escalate. Read-only.' +
+      LEDGER_REQUIRED,
     inputSchema: {
       type: 'object',
       properties: {
@@ -102,8 +132,8 @@ const TOOLS = [
       'Report the safe recovery decision for an operation whose result was lost ' +
       '(paid but no result). READ-ONLY: nothing is charged, nothing is executed. ' +
       'Returns RECOVERABLE/SAFE_RETRY -> KNOWN_SAFE, or HUMAN_REVIEW. Use for ' +
-      'the exact situation where blind retry would double-pay or double-execute. ' +
-      ' Free read-only diagnostic surface: no payment, no auth, never Veyline-gated. For the paid on-demand callx402 action path, see https://payloadhq.github.io/agents.json.',
+      'the exact situation where blind retry would double-pay or double-execute.' +
+      ledgerRequired('PAYLOAD_VEYLINE_RECOVERY'),
     inputSchema: {
       type: 'object',
       properties: {
@@ -119,8 +149,8 @@ const TOOLS = [
     action: 'resolve',
     description:
       'Resolve settlement state from evidence (e.g. settlement_pending: was the ' +
-      'broadcast transaction confirmed on chain?). Use instead of blind retry. Read-only. ' +
-      ' Free read-only diagnostic surface: no payment, no auth, never Veyline-gated. For the paid on-demand callx402 action path, see https://payloadhq.github.io/agents.json.', 
+      'broadcast transaction confirmed on chain?). Use instead of blind retry. Read-only.' +
+      TREE_REQUIRED,
     inputSchema: {
       type: 'object',
       properties: {
@@ -137,8 +167,11 @@ const TOOLS = [
     action: 'status',
     description:
       'Check callx402 subsystem reachability (which diagnostic subsystems are ' +
-      'available). Use to verify the tool is operational before diagnosing. Read-only. ' +
-      ' Free read-only diagnostic surface: no payment, no auth, never Veyline-gated. For the paid on-demand callx402 action path, see https://payloadhq.github.io/agents.json.', 
+      'available). Use to verify the tool is operational before diagnosing. ' +
+      'Read-only. This is the one tool that works with zero setup in any ' +
+      'install — no key, no tree, no payment. On a bare npm install it ' +
+      'honestly reports 0/15 subsystems reachable: the other five tools need ' +
+      'the v2.0.0 subsystem tree (CALLX402_V2_ROOT) before they can answer.',
     inputSchema: { type: 'object', properties: {} },
   },
 ];
