@@ -222,9 +222,11 @@ never executes, never repays. Requires PAYLOAD_VEYLINE_RECOVERY=1.
 
 This is the read-only answer to "is a retry safe?" — a SAFE_RETRY verdict
 here is advisory; performing the safe action stays with your own adapters.
-For the paid one-off verdict on a specific retry plan, use the 'safe_retry'
-rail action (quote first, then pay; see docs/problem-map.md). The MCP tool
-x402_recover covers the same free diagnostic.
+There is NO paid rail form of 'safe_retry': the hosted rail refuses it as
+local-only (it is absent from the rail catalog and cannot be bought via
+Stripe or x402). This free recover verdict is the read-only answer
+available without the self-hosted runtime tree (see docs/problem-map.md).
+The MCP tool x402_recover covers the same free diagnostic.
 
 Exit codes: 0 ok · 1 failure · 2 usage (missing identity/evidence) ·
 3 disabled/unreachable · 4 budget refused ·
@@ -256,14 +258,16 @@ Usage:
   callx402 "natural language intent"        intent mode (plans, never executes blindly)
   callx402 --help | --version
 
-Commands (hosted by default — zero setup):
+Commands (rail actions hosted by default — zero setup; local-only
+commands marked, they need the v2.0.0 runtime tree and are NOT sold on
+the hosted rail):
   diagnose    run the x402 doctor over supplied evidence        [--target <url|json>] [--evidence <json|@file>]
-  rescue      incident triage (auth-gated; read-only without auth) --incident <id>
+  rescue      incident triage, local only (auth-gated; read-only without auth) --incident <id>
   route       select a tool/route for a goal                   --goal <text>
   resolve     resolve settlement state from evidence           --evidence <json|@file>
   doctor      alias of diagnose
-  execute     run the intent pipeline                          --intent <text> [--max-budget N] [--dry-run] [--idempotency-key K]
-  monitor     sentinel snapshot [--once] or stream [--watch]
+  execute     run the intent pipeline, local only              --intent <text> [--max-budget N] [--dry-run] [--idempotency-key K]
+  monitor     sentinel snapshot, local only [--once] or stream [--watch]
   status      per-subsystem reachable/enabled/version report
   preflight   run MCP preflight checks
   inspect     capability-graph lookup/stats                    [--query <text>]
