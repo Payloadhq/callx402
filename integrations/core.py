@@ -5,7 +5,7 @@ Plain functions (no framework imports) so LangChain, CrewAI, AutoGen, or any
 agent framework can wrap them directly. stdlib only.
 
 The rail's public endpoints:
-  GET  /v1/callx402/actions            free — live 13-action fee schedule
+  GET  /v1/callx402/actions            free — live fee schedule (9 hosted actions)
   GET  /v1/callx402/quote              free — deterministic pre-execution quote
   POST /v1/callx402/actions/{action}   paid — unauthenticated -> x402 v2 402
                                        (USDC on Base); credit_id / txHash /
@@ -30,6 +30,13 @@ RAIL = os.environ.get("CALLX402_RAIL", "https://payload-rail.fly.dev").rstrip("/
 
 # Canonical action names (snake_case), verified live 2026-10-07.
 # Hyphenated aliases are also accepted by the rail; these are canonical.
+# AVAILABILITY (verified live 2026-10-13): only 9 of these 13 are hosted and
+# purchasable on the rail — diagnose, explain, evidence, recover, resolve,
+# preflight, settlement_interpretation, failure_classification,
+# duplicate_payment_risk. The other four (safe_retry, rescue, monitor,
+# execute) are LOCAL-ONLY: the rail refuses them with
+# 422 HOSTED_ACTION_UNAVAILABLE, they are absent from the rail catalog, and
+# they cannot be bought via Stripe or x402.
 ACTIONS = (
     "diagnose", "explain", "evidence", "recover", "resolve", "preflight",
     "monitor", "execute", "rescue", "settlement_interpretation", "safe_retry",
@@ -303,7 +310,9 @@ FREE_LOCAL_ALTERNATIVE = (
     "Local CLI / MCP-stdio diagnostics are free and read-only "
     "(git clone https://github.com/Payloadhq/callx402; "
     "node mcp/index.js as an MCP server). The paid rail actions above are "
-    "for hosted on-demand invocation with payment."
+    "for hosted on-demand invocation with payment. Note: safe_retry, "
+    "rescue, monitor, and execute are local-only and are NOT purchasable "
+    "on the hosted rail."
 )
 
 
