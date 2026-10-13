@@ -125,8 +125,11 @@ def callx402_explain(operation_id: str) -> str:
 def callx402_safe_retry(retry_plan: str) -> str:
     """Go/no-go verdict on ONE specific retry plan before anything is signed.
     Use when a retry is being considered and must be proven safe first.
-    Paid on-demand ($5.00 via Stripe). A retry that would double-pay is
-    refused."""
+    AVAILABILITY: safe_retry is LOCAL-ONLY — the hosted rail refuses it
+    (422 HOSTED_ACTION_UNAVAILABLE) and it cannot be bought via Stripe or
+    x402, so this tool currently surfaces that refusal. For the
+    retry-safety question today, use callx402_recover's read-only verdict.
+    A retry that would double-pay is refused."""
     return _render(invoke("safe_retry", {"retry_plan": retry_plan}, **_auth()))
 
 
