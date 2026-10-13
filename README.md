@@ -328,12 +328,78 @@ redemption is not currently enabled. Stripe credits use a separate redemption pa
 
 Live fee schedule: `GET https://payload-rail.fly.dev/v1/callx402/actions`
 (responds `"model":"paid on-demand per action; no subscription required"`).
-The x402-path price is the Stripe-path fee divided by 20 — for example
-`resolve` is $5.00 via Stripe, $0.25 via the x402 path. Never blind-retry a
-payment to reach a paid action: get the quote first.
+There are two prices per action, and they are not interchangeable: the
+**card price** is the Stripe schedule fee; the **USDC price** on the x402
+path is exactly that fee divided by 20 (the free quote endpoint is the
+source of truth for the USDC column). Both, side by side:
+
+| Action | Card (Stripe) | USDC (x402 path) |
+|---|---|---|
+| `diagnose` | $2.00 | $0.10 |
+| `explain` | $1.00 | $0.05 |
+| `evidence` | $2.00 | $0.10 |
+| `recover` | $10.00 | $0.50 |
+| `resolve` | $5.00 | $0.25 |
+| `preflight` | $3.00 | $0.15 |
+| `settlement_interpretation` | $3.00 | $0.15 |
+| `failure_classification` | $2.00 | $0.10 |
+| `duplicate_payment_risk` | $5.00 | $0.25 |
+
+Rail `evidence` and `explain` read back a prior paid invocation (the
+request carries that invocation's `invocation_id`), so they cannot be used
+cold; the free local forms read your local operation ledger instead.
+
+**Not sold on the rail:** `safe_retry`, `rescue`, `monitor`, and `execute`
+are local-only. They run in the self-hosted runtime (v2.0.0 tree), are
+absent from the rail catalog above, and the rail refuses them with
+`422 HOSTED_ACTION_UNAVAILABLE` — there is no Stripe or x402 purchase path
+for them. For the "is this retry safe?" question, the free local `recover`
+verdict is the available read-only answer.
+
+Never blind-retry a payment to reach a paid action: get the quote first.
 
 Problem to action map (which paid action answers which failure, with the free
 CLI/MCP path for each): [`docs/problem-map.md`](docs/problem-map.md).
+
+## Public RevRule evaluation (0.01 USDC)
+
+The rail also exposes one public RevRule evaluation endpoint. It is a
+RevRule demo, not a callx402 diagnostic action:
+`POST https://payload-rail.fly.dev/v1/x402/public/evaluate` evaluates one
+economic event against the fixed, transparent public demo graph (platform
+5% of gross; creator 70% of the remainder; referrer 25% of the remainder
+when a referrer is named in the event) for 0.01 USDC on Base.
+
+The full, correct request body is:
+
+```json
+{
+  "event": {
+    "eventId": "my-event-001",
+    "type": "SALE_COMPLETED",
+    "rail": "stripe",
+    "amountMicros": 100000000,
+    "currency": "USD",
+    "occurredAt": "2026-10-13T00:00:00.000Z"
+  },
+  "txHash": "0x<your settled 0.01 USDC payment on Base>"
+}
+```
+
+- `event.eventId` (any unique non-empty string) and `event.rail` are
+  **required**, even though the 402's advertised bazaar schema omits both.
+  Valid `rail` values: `stripe`, `ach`, `x402`, `manual`, `stablecoin`.
+- `event.type` must be one of: `SALE_COMPLETED`, `API_PAYMENT`,
+  `LICENSE_PAID`, `SUBSCRIPTION_PAYMENT`, `REFERRAL_CONVERTED`,
+  `ROYALTY_RECEIVED`, `CAMPAIGN_MILESTONE`, `MARKETPLACE_TRANSACTION`,
+  `TOUCH`.
+- The event is validated **before** payment: a malformed body gets
+  `400 INVALID_EVENT`, not a 402 (verified live: the body above, minus
+  `txHash`, returns the 402). The endpoint fills in the rest itself —
+  `graphId` is fixed to the public demo graph, and `currency` defaults to
+  `"USD"` and `occurredAt` to now when omitted.
+- Omit `txHash` to receive the x402 v2 `402` challenge; pay 0.01 USDC,
+  then retry the same body with the hash. Each txHash is single-use.
 
 ## Integrations
 
