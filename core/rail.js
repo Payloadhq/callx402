@@ -156,7 +156,7 @@ async function invokeRail(command, args, opts = {}) {
     if (!interactive) {
       return {
         ok: false,
-        error: `Payment of $${price} required. Re-run with --yes to approve non-interactively, or run interactively.`,
+        error: `Payment of $${price} required. Re-run with --approve to approve non-interactively, or run interactively.`,
         quote: { action, price_usd: price, quote_id: quoteId, quote_inputs: quote.quote_inputs },
       };
     }
