@@ -25,7 +25,13 @@ v2.0.0 runtime tree and `CALLX402_LOCAL=1`). The paid form runs on the
 production rail: quote first, payment verified exactly once, then the
 diagnostic executes server-side and the result is returned — zero local setup.
 The "Free path" column names the free equivalent; "rail only" means the action
-exists only as a paid rail action.
+exists only as a paid rail action. "Local only" means the opposite: the action
+exists ONLY locally (self-hosted runtime tree). The hosted rail refuses it
+with `422 HOSTED_ACTION_UNAVAILABLE`, it is absent from the rail catalog
+(`GET /v1/callx402/actions` lists nine actions), and there is no Stripe or
+x402 purchase path for it. Four actions are local-only: `safe_retry`,
+`rescue`, `monitor`, `execute`. Their fee cells below show the schedule
+figure for reference only — it cannot be paid on the rail.
 
 **Fees.** The table lists the Stripe-path fee per action. The x402 path
 quoted by the free quote endpoint is exactly that fee divided by 20
@@ -40,16 +46,16 @@ deterministic, not an estimate.
 | 1 | Settlement uncertainty — can't tell from current info whether the payment settled | `resolve` | $5.00 | `callx402 resolve --evidence ...` / `x402_resolve` | Unknown stays unknown; never auto-retry, never repay |
 | 2 | Lost result after payment — paid, but the result never arrived | `recover` | $10.00 | `callx402 recover <op> --identity ...` / `x402_recover` | Read-only: nothing charged, nothing executed; returns the safe recovery decision or the proven prior result, never a blind re-execution |
 | 3 | Retry uncertainty — something failed; need what/why before deciding if retry is safe | `diagnose` | $2.00 | `callx402 diagnose --evidence ...` / `x402_diagnose` | Unknown failure class returns UNKNOWN, never a guess |
-| 4 | Retry uncertainty, narrowed — is THIS specific retry safe to sign? | `safe_retry` | $5.00 | rail only (start free with `recover`: a SAFE_RETRY verdict there is the read-only answer) | A retry that would double-pay is refused |
+| 4 | Retry uncertainty, narrowed — is THIS specific retry safe to sign? | `safe_retry` | $5.00 (local only — not purchasable on the rail) | local only (self-hosted runtime; no CLI command in this package and no rail purchase path — start free with `recover`: a SAFE_RETRY verdict there is the read-only answer) | A retry that would double-pay is refused |
 | 5 | Duplicate-payment risk — a retry might sign a second authorization for the same intent | `duplicate_payment_risk` | $5.00 | rail only (start free: `resolve` the settlement, then `recover` for the retry verdict) | Ambiguous authorization state blocks the retry |
 | 6 | Need proof — ground truth before acting on any incident | `evidence` | $2.00 | `callx402 evidence <op>` / `x402_evidence` | First step in any incident; returns what is recorded, nothing invented |
 | 7 | Need explanation — plain-language state assessment before retry/refund/escalate | `explain` | $1.00 | `callx402 explain <op>` / `x402_explain` | INCOMPLETE means do not retry, do not repay |
 | 8 | Pre-commit check — intent, payment readiness, risk before an economic operation commits | `preflight` | $3.00 | `callx402 preflight` (local checks) | Blocked stays blocked until the reasons clear |
 | 9 | Failure triage — classify the failure so the right playbook runs | `failure_classification` | $2.00 | rail only (start free with `diagnose`) | Unclassifiable failures escalate to human review |
 | 10 | Settlement-record interpretation — read a raw settlement record, state what it means | `settlement_interpretation` | $3.00 | rail only (start free with `resolve --evidence ...`) | Ambiguous records are reported ambiguous |
-| 11 | Rescue a failed transaction — triage and recover the incident end to end | `rescue` | $15.00 | `callx402 rescue --incident <id>` (triage and quote only, never executes) | Never fabricates success; unreachable subsystems fail closed |
-| 12 | Watch an operation/workload for state changes, failures, anomalies | `monitor` | $5.00 | `callx402 monitor --once` (local sentinel snapshot) | An unwatched gap is reported as a gap, not as healthy |
-| 13 | Run an economic operation through the protected path (exactly-once) | `execute` | $10.00 | `callx402 execute --intent ... --dry-run` (plans only) | Over-budget intents refused with zero side effects |
+| 11 | Rescue a failed transaction — triage and recover the incident end to end | `rescue` | $15.00 (local only — not purchasable on the rail) | `callx402 rescue --incident <id>` (triage and quote only, never executes) | Never fabricates success; unreachable subsystems fail closed |
+| 12 | Watch an operation/workload for state changes, failures, anomalies | `monitor` | $5.00 (local only — not purchasable on the rail) | `callx402 monitor --once` (local sentinel snapshot) | An unwatched gap is reported as a gap, not as healthy |
+| 13 | Run an economic operation through the protected path (exactly-once) | `execute` | $10.00 (local only — not purchasable on the rail) | `callx402 execute --intent ... --dry-run` (plans only) | Over-budget intents refused with zero side effects |
 
 ## Where each surface consumes this map
 
@@ -70,9 +76,14 @@ deterministic, not an estimate.
 ## Notes
 
 - Action names are canonical in `snake_case`. The rail also accepts the
-  hyphenated aliases shown in the OpenAPI enum (`safe-retry`,
-  `duplicate-payment-risk`, `settlement-interpretation`,
-  `failure-classification`); both forms resolve identically (verified live).
+  hyphenated aliases shown in the OpenAPI enum (`duplicate-payment-risk`,
+  `settlement-interpretation`, `failure-classification`); both forms resolve
+  identically (verified live). `safe-retry` is not a rail action in either
+  spelling — it is local-only (see the two-tiers note above).
+- Rail `evidence` / `explain` read back a PRIOR paid invocation: the request
+  must carry that invocation's `invocation_id`, and the rail returns
+  `400 MISSING_INPUT` without one, so they cannot be used cold. The free
+  local forms in the map read your local operation ledger instead.
 - The x402-path quote is the valuation-layer quote, not the raw schedule;
   the fixed schedule above is the Stripe-path floor.
 - Local CLI / MCP-stdio diagnostics are free and read-only — no payment, no
