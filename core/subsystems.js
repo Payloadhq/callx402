@@ -52,6 +52,14 @@ const NOTES = {
   recovery: 'File-backed idempotency store used for duplicate-idempotencyKey dedupe.',
 };
 
+/** First line only: Node require errors append a multi-line "Require stack:"
+ * dump that helps nobody in a status report or an MCP tool result. The short
+ * form still names the missing module and stays actionable. */
+function briefError(err) {
+  const msg = err && err.message ? String(err.message) : String(err || 'unknown error');
+  return msg.split('\n')[0].trim();
+}
+
 function defaultV2Root() {
   return path.resolve(__dirname, '../../x402-paid-api-starter-kit/v2.0.0');
 }
@@ -98,7 +106,7 @@ function getSubsystem(name, { config = {}, deps = {} } = {}) {
   try {
     mod = requireFiles(v2Root, MODULE_FILES[name]);
   } catch (err) {
-    return { name, reachable: false, module: null, enabled: false, flag: null, version: null, note: NOTES[name] || null, subsystemStatus: 'unreachable', error: `require failed: ${err.message}` };
+    return { name, reachable: false, module: null, enabled: false, flag: null, version: null, note: NOTES[name] || null, subsystemStatus: 'unreachable', error: `require failed: ${briefError(err)}` };
   }
 
   let flag = null;
@@ -107,7 +115,7 @@ function getSubsystem(name, { config = {}, deps = {} } = {}) {
     flag = typeof mod.FLAG === 'string' ? mod.FLAG : null;
     enabled = typeof mod.enabled === 'function' ? mod.enabled() : false;
   } catch (err) {
-    return { name, reachable: true, module: mod, enabled: false, flag, version: null, note: NOTES[name] || null, subsystemStatus: 'disabled', error: `enabled() check failed: ${err.message}` };
+    return { name, reachable: true, module: mod, enabled: false, flag, version: null, note: NOTES[name] || null, subsystemStatus: 'disabled', error: `enabled() check failed: ${briefError(err)}` };
   }
 
   const version = mod.version || mod.RESCUE_VERSION || mod.EFFECT_PROOF_VERSION || null;
