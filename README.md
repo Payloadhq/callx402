@@ -77,10 +77,7 @@ Ask the client to list its MCP tools: the six `x402_*` tools should appear.
 Per-client notes and the raw stdio test handshake:
 [`integrations/mcp-clients/`](integrations/mcp-clients/).
 
-Note: `x402_status` works with zero setup. The other five tools dispatch
-into the v2.0.0 subsystem tree, so they report `subsystem_unreachable`
-until `CALLX402_V2_ROOT` points at the tree (see "Full subsystem commands"
-above) and the matching flag is enabled.
+Note: all six free MCP tools respond on a clean npm install using conservative local, read-only assessment of supplied evidence. Without an authoritative source they **do not** verify settlement, access a private ledger, or execute recovery. Existing configured local/remote subsystem integrations remain available.
 
 ## The relationship
 
