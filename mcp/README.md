@@ -17,13 +17,9 @@ over stdio. Zero dependencies (node stdlib only).
 | `x402_status` | Subsystem reachability |
 
 Only diagnostic, read-only actions are exposed. Nothing here charges, executes,
-retries, or repays. If a subsystem is unreachable, the tool fails closed
-instead of inventing an answer.
+retries, or repays. If a verified local or remote subsystem is configured, the tools retain the existing full-subsystem dispatch. On a clean npm install, packaged free tools provide conservative, read-only analysis of *caller-supplied* evidence. They cannot independently verify settlement or access a private ledger.
 
-Setup note: `x402_status` works with zero setup. The other five tools
-dispatch into the v2.0.0 subsystem tree, so they report
-`subsystem_unreachable` until `CALLX402_V2_ROOT` points at the tree and the
-matching flag is enabled (see the main README, "Full subsystem commands").
+Setup note: **all six MCP tools work on a clean npm install**. Missing private ledger evidence is reported as NO_BASIS; recovery is never auto-executed; settlement without chain verification remains UNKNOWN. Existing optional local v2.0.0 integrations continue to work when configured and enabled.
 
 Tool names are namespaced `x402_*` — never `call_x402` (live collision on the
 fiatdock marketplace).
