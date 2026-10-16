@@ -282,6 +282,18 @@ callx402 works out of the box. There are two modes:
 A bare `npm install callx402` gives you the hosted mode — no separate tree,
 no config, no keys. The v2 tree is never required for standard use.
 
+## How payment works
+
+Hosted paid actions settle through Payload's signed-redemption flow, not a generic x402 facilitator:
+
+1. Get a free quote for the action: the exact price, before any payment.
+2. Call the action and read the x402 v2 `402` challenge: USDC on Base, the amount, and the `payTo` address.
+3. Pay the quoted amount to `payTo` from your own wallet.
+4. Redeem the original quote with the payment tx hash and an EIP-191 signed authorization from the paying wallet. A public tx hash alone never authorizes an action.
+5. The rail verifies the payment exactly once on-chain and returns the result.
+
+The full redemption contract is documented in [docs/signed-redemption.md](docs/signed-redemption.md). The free local tier above never charges and never moves money.
+
 ## Paid one-off diagnostics (no subscription)
 
 The CLI and MCP tools above are the **free local tier**: read-only
