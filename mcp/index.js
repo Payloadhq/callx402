@@ -66,7 +66,7 @@ const TOOLS = [
       properties: {
         evidence: {
           type: 'string',
-          description: 'JSON string (or @file path) describing the failure evidence.',
+          description: 'JSON string describing non-sensitive failure evidence; local file references are unsupported.',
         },
         target: {
           type: 'string',
@@ -80,9 +80,8 @@ const TOOLS = [
     name: 'x402_evidence',
     action: 'evidence',
     description:
-      'Show recorded ledger evidence for an operation: event trail, latest ' +
-      'per-plane states (payment / execution / delivery), protocols involved. ' +
-      'Use FIRST in any incident — establishes ground truth before acting. Read-only.' +
+      'Show caller-supplied operation evidence only; no private or hosted ledger is included. ' +
+      'Missing evidence returns NO_BASIS, never an invented ledger record. Read-only.' +
       LEDGER_REQUIRED,
     inputSchema: {
       type: 'object',
@@ -97,10 +96,8 @@ const TOOLS = [
     name: 'x402_explain',
     action: 'explain',
     description:
-      'Explain an operation\'s state in plain language from recorded evidence. ' +
-      'Returns an assessment: NO_BASIS, INCOMPLETE (do not retry, do not repay), ' +
-      'KNOWN_SAFE, RECOVERY_CANDIDATE, or PARTIAL. Use to understand an incident ' +
-      'before deciding whether to retry, refund, or escalate. Read-only.' +
+      'Provide a conservative interpretation of caller-supplied evidence only; ' +
+      'no independent payment or settlement verification is performed. Read-only.' +
       LEDGER_REQUIRED,
     inputSchema: {
       type: 'object',
@@ -117,8 +114,8 @@ const TOOLS = [
     description:
       'Report the safe recovery decision for an operation whose result was lost ' +
       '(paid but no result). READ-ONLY: nothing is charged, nothing is executed. ' +
-      'Returns RECOVERABLE/SAFE_RETRY -> KNOWN_SAFE, or HUMAN_REVIEW. Use for ' +
-      'the exact situation where blind retry would double-pay or double-execute.' +
+      'Without an authoritative settlement source, return HUMAN_REVIEW and never retry. ' +
+      'This free diagnostic cannot execute recovery.' +
       ledgerRequired(),
     inputSchema: {
       type: 'object',
@@ -134,8 +131,8 @@ const TOOLS = [
     name: 'x402_resolve',
     action: 'resolve',
     description:
-      'Resolve settlement state from evidence (e.g. settlement_pending: was the ' +
-      'broadcast transaction confirmed on chain?). Use instead of blind retry. Read-only.' +
+      'Classify caller-provided settlement evidence conservatively. Returns UNKNOWN ' +
+      'without authoritative chain verification; no retry is performed. Read-only.' +
       TREE_REQUIRED,
     inputSchema: {
       type: 'object',
