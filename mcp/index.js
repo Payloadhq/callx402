@@ -32,13 +32,14 @@
  */
 const readline = require('node:readline');
 
-const VERSION = '1.0.4';
+const VERSION = '1.0.5';
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'callx402';
 const TIMEOUT_MS = Number(process.env.CALLX402_TIMEOUT_MS || 30000);
 
-const core = require(process.env.CALLX402_CORE_PATH ||
-  require('node:path').join(__dirname, '..', 'core'));
+// The free MCP artifact must be functional when installed alone. The CLI's
+// optional v2 subsystem tree is not a dependency of these read-only tools.
+const freeCore = require('./free-core.js');
 
 /* ------------------------------------------------------------------ */
 /* Tool definitions: name, description, input schema, core action.     */
@@ -200,11 +201,10 @@ async function handleToolsCall(id, params) {
   }
   const args = (params && params.arguments) || {};
   try {
-    const { result: r, exitCode } = await core.runAction(tool.action, args, { timeoutMs: TIMEOUT_MS });
-    const ok = exitCode === 0;
+    const r = freeCore.run(tool.name, args);
     result(id, {
       content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
-      isError: !ok,
+      isError: false,
     });
   } catch (e) {
     result(id, {
