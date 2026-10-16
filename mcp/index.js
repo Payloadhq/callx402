@@ -18,13 +18,9 @@
  * Only read-only / diagnostic actions are exposed. Actions with side effects
  * (execute, rescue mutations) are intentionally NOT tools here.
  *
- * Honest surface: ONLY x402_status works on a bare install of this package.
- * The other five tools dispatch into the v2.0.0 subsystem tree (the x402
- * Paid API Starter Kit — a separate product that is NOT bundled here) and
- * return `subsystem_unreachable` until CALLX402_V2_ROOT points at that tree
- * and the matching feature flag is enabled. These tools never call the
- * hosted rail; paid hosted equivalents live at
- * https://payloadhq.github.io/agents.json.
+ * All six tools load without sibling packages. Existing enabled local/remote\n * subsystems are used when configured; otherwise free evidence and settlement
+ * assessments remain conservative: caller evidence is not authenticated,
+ * and local tools cannot certify a real payment or automatically retry.
  *
  * Usage (Claude Desktop / MCP client config):
  *   { "command": "node", "args": ["/path/to/callx402/mcp/index.js"] }
@@ -32,38 +28,51 @@
  */
 const readline = require('node:readline');
 
-const VERSION = '1.0.4';
+const VERSION = '1.0.5';
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'callx402';
 const TIMEOUT_MS = Number(process.env.CALLX402_TIMEOUT_MS || 30000);
 
-const core = require(process.env.CALLX402_CORE_PATH ||
-  require('node:path').join(__dirname, '..', 'core'));
+// The free MCP artifact must be functional when installed alone. The CLI's
+// optional v2 subsystem tree is not a dependency of these read-only tools.
+const freeCore = require('./free-core.js');
+const core = require('../core/index.js');
+const { loadConfig } = require('../core/config.js');
+const { getSubsystem } = require('../core/subsystems.js');
+const { loadVeyline } = require('../core/veyline.js');
+
+/**
+ * Prefer a customer's already configured *real* local/remote subsystem.
+ * Otherwise use the packaged, read-only offline diagnostic instead of
+ * returning subsystem_unreachable on a fresh npm install.
+ *
+ * No payment, signer, or execute action is reachable through this MCP server.
+ */
+function hasConfiguredBackend(action) {
+  const cfg = loadConfig();
+  if (cfg.mode === 'remote' && cfg.remoteUrl) return true;
+  const subsystem = ({ diagnose: 'doctor', resolve: 'settlement' })[action];
+  if (subsystem) {
+    const handle = getSubsystem(subsystem, { config: cfg });
+    return handle.reachable && handle.enabled;
+  }
+  if (['evidence', 'explain', 'recover'].includes(action)) {
+    const flag = action === 'recover' ? 'PAYLOAD_VEYLINE_RECOVERY' : 'PAYLOAD_VEYLINE_LEDGER';
+    if (process.env[flag] !== '1') return false;
+    const loaded = loadVeyline(cfg, {});
+    return !!loaded.modules;
+  }
+  return false;
+}
 
 /* ------------------------------------------------------------------ */
-/* Tool definitions: name, description, input schema, core action.     */
+/* Tool definitions: packaged read-only diagnostics only.             */
 /*                                                                     */
-/* Requirement trailers, stated in every description because the       */
-/* description is what an MCP client actually shows the user:          */
-/*   TREE_REQUIRED — dispatches into the v2.0.0 subsystem tree, which  */
-/*     is NOT part of this package.                                    */
-/*   LEDGER_REQUIRED — reads the local Veyline operation ledger via    */
-/*     modules that are likewise not bundled here.                     */
+/* Caller-supplied evidence is unverified. No private ledger or funds.  */
 /* ------------------------------------------------------------------ */
-const TREE_REQUIRED =
-  ' Requires the v2.0.0 subsystem tree (x402 Paid API Starter Kit, a separate ' +
-  'product that is NOT included in this package): set CALLX402_V2_ROOT to the ' +
-  'tree and enable the subsystem flag, or this tool returns ' +
-  'subsystem_unreachable and does nothing. With the tree configured it is free ' +
-  'and read-only: no payment, no auth. A paid hosted equivalent runs on the ' +
-  'Payload rail — see https://payloadhq.github.io/agents.json.';
-const ledgerRequired = (flag) =>
-  ' Requires the local Veyline ledger modules (NOT included in this package; ' +
-  `enable with ${flag}=1 where the ledger lives) and reads ` +
-  'operations recorded on THIS machine — it cannot read back hosted rail ' +
-  'invocations. Until configured it returns subsystem_unreachable and does ' +
-  'nothing. When configured it is free and read-only: no payment, no auth.';
-const LEDGER_REQUIRED = ledgerRequired('PAYLOAD_VEYLINE_LEDGER');
+const TREE_REQUIRED = ' Local read-only inference from caller-supplied evidence, included in npm. Does not independently verify payments or access private infrastructure.';
+const ledgerRequired = () => ' Returns only caller-supplied evidence; no remote/private ledger is included and no on-chain data is verified.';
+const LEDGER_REQUIRED = ledgerRequired();
 
 const TOOLS = [
   {
@@ -80,7 +89,7 @@ const TOOLS = [
       properties: {
         evidence: {
           type: 'string',
-          description: 'JSON string (or @file path) describing the failure evidence.',
+          description: 'JSON string describing non-sensitive failure evidence; local file references are unsupported.',
         },
         target: {
           type: 'string',
@@ -94,15 +103,14 @@ const TOOLS = [
     name: 'x402_evidence',
     action: 'evidence',
     description:
-      'Show recorded ledger evidence for an operation: event trail, latest ' +
-      'per-plane states (payment / execution / delivery), protocols involved. ' +
-      'Use FIRST in any incident — establishes ground truth before acting. Read-only.' +
+      'Show caller-supplied operation evidence only; no private or hosted ledger is included. ' +
+      'Missing evidence returns NO_BASIS, never an invented ledger record. Read-only.' +
       LEDGER_REQUIRED,
     inputSchema: {
       type: 'object',
       properties: {
         operationId: { type: 'string', description: 'The operation ID to look up.' },
-        dir: { type: 'string', description: 'Optional ledger directory.' },
+        evidence: { type: 'string', description: 'Optional sanitized JSON evidence; otherwise NO_BASIS.' },
       },
       required: ['operationId'],
     },
@@ -111,16 +119,14 @@ const TOOLS = [
     name: 'x402_explain',
     action: 'explain',
     description:
-      'Explain an operation\'s state in plain language from recorded evidence. ' +
-      'Returns an assessment: NO_BASIS, INCOMPLETE (do not retry, do not repay), ' +
-      'KNOWN_SAFE, RECOVERY_CANDIDATE, or PARTIAL. Use to understand an incident ' +
-      'before deciding whether to retry, refund, or escalate. Read-only.' +
+      'Provide a conservative interpretation of caller-supplied evidence only; ' +
+      'no independent payment or settlement verification is performed. Read-only.' +
       LEDGER_REQUIRED,
     inputSchema: {
       type: 'object',
       properties: {
         operationId: { type: 'string', description: 'The operation ID to explain.' },
-        dir: { type: 'string', description: 'Optional ledger directory.' },
+        evidence: { type: 'string', description: 'Optional sanitized JSON evidence; otherwise NO_BASIS.' },
       },
       required: ['operationId'],
     },
@@ -131,9 +137,9 @@ const TOOLS = [
     description:
       'Report the safe recovery decision for an operation whose result was lost ' +
       '(paid but no result). READ-ONLY: nothing is charged, nothing is executed. ' +
-      'Returns RECOVERABLE/SAFE_RETRY -> KNOWN_SAFE, or HUMAN_REVIEW. Use for ' +
-      'the exact situation where blind retry would double-pay or double-execute.' +
-      ledgerRequired('PAYLOAD_VEYLINE_RECOVERY'),
+      'Without an authoritative settlement source, return HUMAN_REVIEW and never retry. ' +
+      'This free diagnostic cannot execute recovery.' +
+      ledgerRequired(),
     inputSchema: {
       type: 'object',
       properties: {
@@ -148,8 +154,8 @@ const TOOLS = [
     name: 'x402_resolve',
     action: 'resolve',
     description:
-      'Resolve settlement state from evidence (e.g. settlement_pending: was the ' +
-      'broadcast transaction confirmed on chain?). Use instead of blind retry. Read-only.' +
+      'Classify caller-provided settlement evidence conservatively. Returns UNKNOWN ' +
+      'without authoritative chain verification; no retry is performed. Read-only.' +
       TREE_REQUIRED,
     inputSchema: {
       type: 'object',
@@ -168,10 +174,8 @@ const TOOLS = [
     description:
       'Check callx402 subsystem reachability (which diagnostic subsystems are ' +
       'available). Use to verify the tool is operational before diagnosing. ' +
-      'Read-only. This is the one tool that works with zero setup in any ' +
-      'install — no key, no tree, no payment. On a bare npm install it ' +
-      'honestly reports 0/15 subsystems reachable: the other five tools need ' +
-      'the v2.0.0 subsystem tree (CALLX402_V2_ROOT) before they can answer.',
+      'Read-only. Works with zero setup on a bare npm install. ' +
+      'reports the availability of the packaged free tools independently of optional subsystems.',
     inputSchema: { type: 'object', properties: {} },
   },
 ];
@@ -200,12 +204,19 @@ async function handleToolsCall(id, params) {
   }
   const args = (params && params.arguments) || {};
   try {
-    const { result: r, exitCode } = await core.runAction(tool.action, args, { timeoutMs: TIMEOUT_MS });
-    const ok = exitCode === 0;
-    result(id, {
-      content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
-      isError: !ok,
-    });
+    if (hasConfiguredBackend(tool.action)) {
+      const { result: r, exitCode } = await core.runAction(tool.action, args, { timeoutMs: TIMEOUT_MS });
+      result(id, {
+        content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
+        isError: exitCode !== 0,
+      });
+    } else {
+      const r = freeCore.run(tool.name, args);
+      result(id, {
+        content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
+        isError: false,
+      });
+    }
   } catch (e) {
     result(id, {
       content: [{ type: 'text', text: JSON.stringify({ error: e && e.message ? e.message : String(e) }) }],
