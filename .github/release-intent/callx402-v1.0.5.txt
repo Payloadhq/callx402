@@ -1,0 +1,1 @@
+Release callx402@1.0.5 after the clean-install consumer suite and legacy-subsystem regression suite pass. No production money movement.
