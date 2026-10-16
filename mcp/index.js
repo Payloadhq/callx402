@@ -38,14 +38,9 @@ const TIMEOUT_MS = Number(process.env.CALLX402_TIMEOUT_MS || 30000);
 const freeCore = require('./free-core.js');
 
 /* ------------------------------------------------------------------ */
-/* Tool definitions: name, description, input schema, core action.     */
+/* Tool definitions: packaged read-only diagnostics only.             */
 /*                                                                     */
-/* Requirement trailers, stated in every description because the       */
-/* description is what an MCP client actually shows the user:          */
-/*   TREE_REQUIRED — dispatches into the v2.0.0 subsystem tree, which  */
-/*     is NOT part of this package.                                    */
-/*   LEDGER_REQUIRED — reads the local Veyline operation ledger via    */
-/*     modules that are likewise not bundled here.                     */
+/* Caller-supplied evidence is unverified. No private ledger or funds.  */
 /* ------------------------------------------------------------------ */
 const TREE_REQUIRED = ' Local read-only inference from caller-supplied evidence, included in npm. Does not independently verify payments or access private infrastructure.';
 const ledgerRequired = () => ' Returns only caller-supplied evidence; no remote/private ledger is included and no on-chain data is verified.';
@@ -151,8 +146,7 @@ const TOOLS = [
     description:
       'Check callx402 subsystem reachability (which diagnostic subsystems are ' +
       'available). Use to verify the tool is operational before diagnosing. ' +
-      'Read-only. This is the one tool that works with zero setup in any ' +
-      'install — no key, no tree, no payment. On a bare npm install it ' +
+      'Read-only. Works with zero setup on a bare npm install. ' +
       'reports the availability of the packaged free tools independently of optional subsystems.',
     inputSchema: { type: 'object', properties: {} },
   },
