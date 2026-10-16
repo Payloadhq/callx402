@@ -17,9 +17,11 @@ test('npm-packed callx402 exposes usable free MCP diagnosis to a clean consumer'
    const pack=cp.spawnSync('npm',['pack','--ignore-scripts','--json','--pack-destination',temp],{
      cwd:root,encoding:'utf8',timeout:30000});
    assert.equal(pack.status,0,pack.stderr);
-   const parsed=JSON.parse(pack.stdout);
-   const filename=parsed[0]?.filename;
-   assert.ok(filename&&filename.endsWith('.tgz'),'npm pack must produce a tarball');
+   // Newer npm versions differ in --json metadata; inspect the actual artifact
+   // instead of relying on a particular stdout schema.
+   const filename=fs.readdirSync(temp).find(name=>name.endsWith('.tgz'));
+   assert.ok(filename,'npm pack must produce a tarball in '+temp+
+     ' (stdout: '+pack.stdout.slice(0,500)+')');
    const bundle=path.join(temp,filename);
    assert.ok(fs.existsSync(bundle),'packed npm tarball present');
    const extracted=cp.spawnSync('tar',['-xzf',bundle,'-C',temp],{encoding:'utf8'});
