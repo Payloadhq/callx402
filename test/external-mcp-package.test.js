@@ -63,5 +63,20 @@ test('npm-packed callx402 exposes usable free MCP diagnosis to a clean consumer'
      'fresh npm package must not demand an unpublished sibling module: '+output.slice(0,600));
    assert.equal(diagnostic.result.isError,false,
      'free diagnostic must work from a clean published-style npm artifact: '+output.slice(0,600));
+   for (const [name,args] of [
+     ['x402_status',{}],
+     ['x402_evidence',{operationId:'operation-fixture'}],
+     ['x402_explain',{operationId:'operation-fixture'}],
+     ['x402_recover',{operationId:'operation-fixture'}],
+     ['x402_resolve',{evidence:JSON.stringify({txHash:'0x'+'a'.repeat(64),network:'base'})}]
+   ]) {
+     const response=await rpc('tools/call',{name,arguments:args});
+     assert.equal(response.result?.isError,false,
+       name+' must respond safely on clean npm install: '+JSON.stringify(response));
+     const data=JSON.parse(response.result.content[0].text);
+     if(name==='x402_recover') assert.equal(data.canRetry,false,'no unauthenticated automatic recovery');
+     if(name==='x402_resolve') assert.equal(data.settlement,'UNKNOWN','no synthetic proof of settlement');
+     if(name==='x402_evidence') assert.equal(data.basis,'NO_BASIS','no invented private ledger entries');
+   }
  }finally{if(proc)proc.kill('SIGTERM');fs.rmSync(temp,{recursive:true,force:true});}
 });
