@@ -18,7 +18,7 @@
  * Only read-only / diagnostic actions are exposed. Actions with side effects
  * (execute, rescue mutations) are intentionally NOT tools here.
  *
- * All six tools load without sibling packages. Free evidence and settlement
+ * All six tools load without sibling packages. Existing enabled local/remote\n * subsystems are used when configured; otherwise free evidence and settlement
  * assessments remain conservative: caller evidence is not authenticated,
  * and local tools cannot certify a real payment or automatically retry.
  *
@@ -36,6 +36,34 @@ const TIMEOUT_MS = Number(process.env.CALLX402_TIMEOUT_MS || 30000);
 // The free MCP artifact must be functional when installed alone. The CLI's
 // optional v2 subsystem tree is not a dependency of these read-only tools.
 const freeCore = require('./free-core.js');
+const core = require('../core/index.js');
+const { loadConfig } = require('../core/config.js');
+const { getSubsystem } = require('../core/subsystems.js');
+const { loadVeyline } = require('../core/veyline.js');
+
+/**
+ * Prefer a customer's already configured *real* local/remote subsystem.
+ * Otherwise use the packaged, read-only offline diagnostic instead of
+ * returning subsystem_unreachable on a fresh npm install.
+ *
+ * No payment, signer, or execute action is reachable through this MCP server.
+ */
+function hasConfiguredBackend(action) {
+  const cfg = loadConfig();
+  if (cfg.mode === 'remote' && cfg.remoteUrl) return true;
+  const subsystem = ({ diagnose: 'doctor', resolve: 'settlement' })[action];
+  if (subsystem) {
+    const handle = getSubsystem(subsystem, { config: cfg });
+    return handle.reachable && handle.enabled;
+  }
+  if (['evidence', 'explain', 'recover'].includes(action)) {
+    const flag = action === 'recover' ? 'PAYLOAD_VEYLINE_RECOVERY' : 'PAYLOAD_VEYLINE_LEDGER';
+    if (process.env[flag] !== '1') return false;
+    const loaded = loadVeyline(cfg, {});
+    return !!loaded.modules;
+  }
+  return false;
+}
 
 /* ------------------------------------------------------------------ */
 /* Tool definitions: packaged read-only diagnostics only.             */
@@ -176,11 +204,19 @@ async function handleToolsCall(id, params) {
   }
   const args = (params && params.arguments) || {};
   try {
-    const r = freeCore.run(tool.name, args);
-    result(id, {
-      content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
-      isError: false,
-    });
+    if (hasConfiguredBackend(tool.action)) {
+      const { result: r, exitCode } = await core.runAction(tool.action, args, { timeoutMs: TIMEOUT_MS });
+      result(id, {
+        content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
+        isError: exitCode !== 0,
+      });
+    } else {
+      const r = freeCore.run(tool.name, args);
+      result(id, {
+        content: [{ type: 'text', text: JSON.stringify(r, null, 2) }],
+        isError: false,
+      });
+    }
   } catch (e) {
     result(id, {
       content: [{ type: 'text', text: JSON.stringify({ error: e && e.message ? e.message : String(e) }) }],
