@@ -87,7 +87,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         operationId: { type: 'string', description: 'The operation ID to look up.' },
-        dir: { type: 'string', description: 'Optional ledger directory.' },
+        evidence: { type: 'string', description: 'Optional sanitized JSON evidence; otherwise NO_BASIS.' },
       },
       required: ['operationId'],
     },
@@ -103,7 +103,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         operationId: { type: 'string', description: 'The operation ID to explain.' },
-        dir: { type: 'string', description: 'Optional ledger directory.' },
+        evidence: { type: 'string', description: 'Optional sanitized JSON evidence; otherwise NO_BASIS.' },
       },
       required: ['operationId'],
     },
