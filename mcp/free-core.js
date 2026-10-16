@@ -17,7 +17,7 @@ function run(name, args = {}) {
   const network = accept.network || evidence.network || null;
   const legacy = ['base','base-sepolia','solana','solana-devnet','ethereum','arbitrum','optimism','polygon'];
   const known = typeof network === 'string' && (
-    /^(eip155:\\d+|solana:[A-Za-z0-9]+)$/.test(network) || legacy.includes(network));
+    /^(eip155:\d+|solana:[A-Za-z0-9]+)$/.test(network) || legacy.includes(network));
   const terms = !!(network && accept.asset && (accept.amount != null || accept.maxAmountRequired != null));
   const version = challenge.x402Version || evidence.x402Version || null;
   if(name === 'x402_diagnose') return {
