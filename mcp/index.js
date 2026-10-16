@@ -18,13 +18,9 @@
  * Only read-only / diagnostic actions are exposed. Actions with side effects
  * (execute, rescue mutations) are intentionally NOT tools here.
  *
- * Honest surface: ONLY x402_status works on a bare install of this package.
- * The other five tools dispatch into the v2.0.0 subsystem tree (the x402
- * Paid API Starter Kit — a separate product that is NOT bundled here) and
- * return `subsystem_unreachable` until CALLX402_V2_ROOT points at that tree
- * and the matching feature flag is enabled. These tools never call the
- * hosted rail; paid hosted equivalents live at
- * https://payloadhq.github.io/agents.json.
+ * All six tools load without sibling packages. Free evidence and settlement
+ * assessments remain conservative: caller evidence is not authenticated,
+ * and local tools cannot certify a real payment or automatically retry.
  *
  * Usage (Claude Desktop / MCP client config):
  *   { "command": "node", "args": ["/path/to/callx402/mcp/index.js"] }
@@ -51,20 +47,9 @@ const freeCore = require('./free-core.js');
 /*   LEDGER_REQUIRED — reads the local Veyline operation ledger via    */
 /*     modules that are likewise not bundled here.                     */
 /* ------------------------------------------------------------------ */
-const TREE_REQUIRED =
-  ' Requires the v2.0.0 subsystem tree (x402 Paid API Starter Kit, a separate ' +
-  'product that is NOT included in this package): set CALLX402_V2_ROOT to the ' +
-  'tree and enable the subsystem flag, or this tool returns ' +
-  'subsystem_unreachable and does nothing. With the tree configured it is free ' +
-  'and read-only: no payment, no auth. A paid hosted equivalent runs on the ' +
-  'Payload rail — see https://payloadhq.github.io/agents.json.';
-const ledgerRequired = (flag) =>
-  ' Requires the local Veyline ledger modules (NOT included in this package; ' +
-  `enable with ${flag}=1 where the ledger lives) and reads ` +
-  'operations recorded on THIS machine — it cannot read back hosted rail ' +
-  'invocations. Until configured it returns subsystem_unreachable and does ' +
-  'nothing. When configured it is free and read-only: no payment, no auth.';
-const LEDGER_REQUIRED = ledgerRequired('PAYLOAD_VEYLINE_LEDGER');
+const TREE_REQUIRED = ' Local read-only inference from caller-supplied evidence, included in npm. Does not independently verify payments or access private infrastructure.';
+const ledgerRequired = () => ' Returns only caller-supplied evidence; no remote/private ledger is included and no on-chain data is verified.';
+const LEDGER_REQUIRED = ledgerRequired();
 
 const TOOLS = [
   {
@@ -134,7 +119,7 @@ const TOOLS = [
       '(paid but no result). READ-ONLY: nothing is charged, nothing is executed. ' +
       'Returns RECOVERABLE/SAFE_RETRY -> KNOWN_SAFE, or HUMAN_REVIEW. Use for ' +
       'the exact situation where blind retry would double-pay or double-execute.' +
-      ledgerRequired('PAYLOAD_VEYLINE_RECOVERY'),
+      ledgerRequired(),
     inputSchema: {
       type: 'object',
       properties: {
@@ -171,8 +156,7 @@ const TOOLS = [
       'available). Use to verify the tool is operational before diagnosing. ' +
       'Read-only. This is the one tool that works with zero setup in any ' +
       'install — no key, no tree, no payment. On a bare npm install it ' +
-      'honestly reports 0/15 subsystems reachable: the other five tools need ' +
-      'the v2.0.0 subsystem tree (CALLX402_V2_ROOT) before they can answer.',
+      'reports the availability of the packaged free tools independently of optional subsystems.',
     inputSchema: { type: 'object', properties: {} },
   },
 ];
