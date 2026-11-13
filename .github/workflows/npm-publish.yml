@@ -7,7 +7,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/release-intent/callx402-v1.0.5.txt'
+      - '.github/release-intent/callx402-v1.0.6.txt'
 
 permissions:
   id-token: write
@@ -28,11 +28,11 @@ jobs:
       - run: npm pack --dry-run
       - name: Confirm release version
         run: |
-          node -e "if (require('./package.json').version !== '1.0.5') process.exit(1)"
+          node -e "if (require('./package.json').version !== '1.0.6') process.exit(1)"
       - name: Check whether version is already published
         id: published
         run: |
-          if npm view callx402@1.0.5 version >/dev/null 2>&1; then
+          if npm view callx402@1.0.6 version >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -52,6 +52,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v1.0.5 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create v1.0.5 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "callx402 v1.0.5" --notes "Free read-only MCP diagnostics work from a clean npm installation. Existing configured local/remote subsystems remain available. Financial execution remains disabled through MCP. Release verified by full test suite and npm-pack consumer tests."
+          if ! gh release view v1.0.6 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v1.0.6 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "callx402 v1.0.6" --notes "Published callx402 v1.0.6 to npm. See https://github.com/Payloadhq/callx402/releases/tag/v1.0.6"
           fi
