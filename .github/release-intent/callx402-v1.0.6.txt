@@ -1,0 +1,1 @@
+Release callx402@1.0.6: npm metadata rewrite — buyer-language description and expanded discovery keywords. No code changes.
