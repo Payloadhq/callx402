@@ -4,7 +4,7 @@
     "callx402": "./bin/callx402.js"
   },
   "dependencies": {},
-  "description": "Universal action layer that calls the x402 infrastructure subsystems (Sentinel, Rescue, Doctor, Router, SpendGuard, Settlement Resolver, MCP fabric, RevRule) behind one CLI/SDK entry point. callx402 is the ACTION, not the product name.",
+  "description": "free local MCP diagnostics for failed x402 payments, plus hosted per-action diagnostics paid in USDC on Base",
   "engines": {
     "node": ">=18"
   },
@@ -14,7 +14,15 @@
     "mcp",
     "cli",
     "agents",
-    "payments"
+    "payments",
+    "diagnostics",
+    "debugging",
+    "troubleshooting",
+    "402",
+    "failed-payments",
+    "usdc",
+    "base",
+    "model-context-protocol"
   ],
   "license": "MIT",
   "main": "./sdk/js/index.js",
@@ -27,6 +35,6 @@
     "smoke": "node bin/callx402.js status --json",
     "test": "node --test test/*.test.js"
   },
-  "version": "1.0.5",
+  "version": "1.0.6",
   "mcpName": "io.github.payload-tools/callx402"
 }
